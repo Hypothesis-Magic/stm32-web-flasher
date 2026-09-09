@@ -111,6 +111,9 @@ $('connect').addEventListener('click', async () => {
     $('device').textContent = '未連線'; $('chip-state').textContent = '未知';
     status(describeConnectionError(error), error.name !== 'NotFoundError');
   } finally { busy = false; ready(); }
+  // Offer regression immediately on a protected target, but never erase merely
+  // because a probe was connected. Reuse the explicit destructive confirmation.
+  if (link && !link.broken && deviceInfo?.rdp === 1) await applyRdp(0, true);
 });
 $('disconnect').addEventListener('click', async () => {
   busy = true; ready();
@@ -152,9 +155,9 @@ function showRdpHint() {
   $('rdp-apply').classList.toggle('danger', next === 2);
 }
 $('rdp-level').addEventListener('change', () => { showRdpHint(); ready(); });
-function confirmRdp(current, next) {
+function confirmRdp(current, next, detectedOnConnect = false) {
   const phrase = rdpConfirmation(current, next), dialog = $('rdp-dialog');
-  $('rdp-title').textContent = `RDP ${current} → RDP ${next}`;
+  $('rdp-title').textContent = detectedOnConnect ? '偵測到 RDP 1 · 清除並解除保護' : `RDP ${current} → RDP ${next}`;
   $('rdp-warning').textContent = next === 2
     ? '永久鎖定晶片，無法降級或解除保護，ST-LINK 將無法再連線、燒錄或除錯，ST 原廠也無法恢復，請先確認韌體可正常運作'
     : next === 0 ? '將清除整個 Flash 與備份暫存器，包含韌體和最後 4 KB 設定，無法復原，「保護最後 4 KB」不適用於解除 RDP'
@@ -174,14 +177,17 @@ function confirmRdp(current, next) {
     dialog.returnValue = ''; dialog.showModal();
   });
 }
-$('rdp-apply').addEventListener('click', async () => {
+async function applyRdp(next, detectedOnConnect = false) {
   if (busy || !link || link.broken || !deviceInfo) return;
-  const activeLink = link, expectedOptions = deviceInfo.options, next = Number($('rdp-level').value);
+  const activeLink = link, expectedOptions = deviceInfo.options;
   busy = true; ready();
   let attempted = false;
   try {
-    const confirmation = await confirmRdp(deviceInfo.rdp, next);
-    if (!confirmation) return;
+    const confirmation = await confirmRdp(deviceInfo.rdp, next, detectedOnConnect);
+    if (!confirmation) {
+      if (detectedOnConnect && !activeLink.broken) status('已取消清除，晶片維持 RDP 1');
+      return;
+    }
     if (activeLink.broken) throw new Error('ST-LINK 已中斷，請重新連接');
     attempted = true;
     await selectedTarget().setRdp(activeLink, next, { expectedOptions, confirmation, update: message => {
@@ -201,7 +207,8 @@ $('rdp-apply').addEventListener('click', async () => {
     if (attempted || activeLink.broken) await closeLink();
     busy = false; ready();
   }
-});
+}
+$('rdp-apply').addEventListener('click', () => applyRdp(Number($('rdp-level').value)));
 $('flash').addEventListener('click', async () => {
   if (busy || fileReading || !link || !image) return;
   busy = true; ready(); $('progress').value = 0;

@@ -17,7 +17,10 @@ It does not download code from a CDN or upload firmware to a server.
 `stm32g0xx_hal_flash_ex.c` and `stm32g031xx.h`. Only the RDP byte is changed:
 level 0 = `0xAA`, level 1 = `0xBB`, level 2 = `0xCC`.
 
-- Changes require a separate button, acknowledgement and typed confirmation
+- All changes require acknowledgement and typed confirmation; manual changes
+  use the separate Apply RDP button, never the firmware programming button
+- Connecting to an RDP 1 target opens the level 0 regression confirmation
+  immediately; cancel/Escape/disconnect never clears data or changes protection
 - Level 1 to 0 erases main Flash and backup registers, including the last 4 KB;
   the firmware programming preserve-settings checkbox does not apply
 - Level 2 is irreversible and disables the debug port, including under reset
