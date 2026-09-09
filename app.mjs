@@ -157,10 +157,11 @@ $('target').addEventListener('change', () => {
 });
 function showRdpHint() {
   const next = Number($('rdp-level').value);
+  $('rdp-hint').hidden = next === 0;
   setText($('rdp-hint'), next === 2
     ? '永久關閉 SWD／除錯，無法解除或再用 ST-LINK 燒錄'
     : next === 1 ? '阻止外部讀取 Flash，日後解除保護會清除內容'
-      : 'RDP 1 降回 0 會清除 Flash，包含最後 4 KB');
+      : '');
   $('rdp-hint').classList.toggle('error', next === 2);
   $('rdp-apply').classList.toggle('danger', next === 2);
 }

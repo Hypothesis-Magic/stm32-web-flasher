@@ -8,7 +8,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>STM32 韌體燒錄工具</title>
   <link rel="stylesheet" href="./style.css?v=bilingual">
-  <script type="module" src="./app.mjs?v=bilingual"></script>
+  <script type="module" src="./app.mjs?v=lean-rdp-copy"></script>
 </head>
 <body>
   <main>
@@ -23,7 +23,6 @@
         </select>
         <div class="connection-actions"><button id="connect" disabled>連接 ST-LINK</button>
         <button id="disconnect" class="secondary" disabled>中斷連線</button></div>
-        <p class="small">RDP 1 晶片連線後會自動清除全部 Flash（含最後 4 KB）並解除保護</p>
         <dl><dt>連線狀態</dt><dd id="device">未連線</dd><dt>晶片狀態</dt><dd id="chip-state" aria-live="polite">未知</dd><dt>讀取保護</dt><dd id="rdp-current">—</dd><dt>探針韌體</dt><dd id="probe">—</dd></dl>
       </section>
       <section class="card">
@@ -52,7 +51,7 @@
         </select>
         <button id="rdp-apply" disabled>套用 RDP</button>
       </div>
-      <p id="rdp-hint" class="small">RDP 1 降回 0 會清除 Flash，包含最後 4 KB</p>
+      <p id="rdp-hint" class="small" hidden></p>
       <p id="rdp-result" class="small" role="status" hidden></p>
     </section>
     <details class="help"><summary>連線疑難與使用說明</summary>
