@@ -47,8 +47,9 @@ select { width: 100%; min-height: 44px; padding: 10px 11px; border: 1px solid #d
 select:disabled { background: var(--soft); color: var(--muted); cursor: not-allowed; }
 .connection-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
 .connection-actions .secondary { margin-left: 0; }
-input[type=file] { width: 100%; padding: 10px; border: 1px solid #d8dfda; border-radius: 6px; background: white; color: var(--muted); font-size: .875rem; }
-input::file-selector-button { margin-right: 10px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--soft); color: var(--text); font: inherit; cursor: pointer; }
+#target, #firmware { height: 44px; }
+input[type=file] { width: 100%; padding: 5px; border: 1px solid #d8dfda; border-radius: 6px; background: white; color: var(--muted); font-size: .875rem; line-height: 32px; }
+input::file-selector-button { box-sizing: border-box; height: 32px; margin-right: 10px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--soft); color: var(--text); font: inherit; line-height: 30px; cursor: pointer; }
 input:disabled::file-selector-button { color: var(--muted); cursor: not-allowed; }
 .check { display: flex; align-items: flex-start; gap: 8px; font-size: .875rem; color: var(--muted); }
 .check input { width: 16px; height: 16px; margin: 4px 0 0; flex-shrink: 0; accent-color: var(--accent); }
