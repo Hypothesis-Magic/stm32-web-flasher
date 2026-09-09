@@ -111,9 +111,8 @@ $('connect').addEventListener('click', async () => {
     $('device').textContent = '未連線'; $('chip-state').textContent = '未知';
     status(describeConnectionError(error), error.name !== 'NotFoundError');
   } finally { busy = false; ready(); }
-  // Offer regression immediately on a protected target, but never erase merely
-  // because a probe was connected. Reuse the explicit destructive confirmation.
-  if (link && !link.broken && deviceInfo?.rdp === 1) await applyRdp(0, true);
+  // Connecting an RDP1 target intentionally starts regression and mass erase.
+  if (link && !link.broken && deviceInfo?.rdp === 1) await applyRdp(0);
 });
 $('disconnect').addEventListener('click', async () => {
   busy = true; ready();
@@ -155,9 +154,9 @@ function showRdpHint() {
   $('rdp-apply').classList.toggle('danger', next === 2);
 }
 $('rdp-level').addEventListener('change', () => { showRdpHint(); ready(); });
-function confirmRdp(current, next, detectedOnConnect = false) {
+function confirmRdp(current, next) {
   const phrase = rdpConfirmation(current, next), dialog = $('rdp-dialog');
-  $('rdp-title').textContent = detectedOnConnect ? '偵測到 RDP 1 · 清除並解除保護' : `RDP ${current} → RDP ${next}`;
+  $('rdp-title').textContent = `RDP ${current} → RDP ${next}`;
   $('rdp-warning').textContent = next === 2
     ? '永久鎖定晶片，無法降級或解除保護，ST-LINK 將無法再連線、燒錄或除錯，ST 原廠也無法恢復，請先確認韌體可正常運作'
     : next === 0 ? '將清除整個 Flash 與備份暫存器，包含韌體和最後 4 KB 設定，無法復原，「保護最後 4 KB」不適用於解除 RDP'
@@ -177,17 +176,18 @@ function confirmRdp(current, next, detectedOnConnect = false) {
     dialog.returnValue = ''; dialog.showModal();
   });
 }
-async function applyRdp(next, detectedOnConnect = false) {
+async function applyRdp(next) {
   if (busy || !link || link.broken || !deviceInfo) return;
   const activeLink = link, expectedOptions = deviceInfo.options;
   busy = true; ready();
   let attempted = false;
   try {
-    const confirmation = await confirmRdp(deviceInfo.rdp, next, detectedOnConnect);
-    if (!confirmation) {
-      if (detectedOnConnect && !activeLink.broken) status('已取消清除，晶片維持 RDP 1');
-      return;
-    }
+    // Only permanent level 2 needs another UI confirmation. Levels 0/1 are
+    // authorized by Apply, or by connecting a protected target for regression.
+    const confirmation = next === 2
+      ? await confirmRdp(deviceInfo.rdp, next)
+      : rdpConfirmation(deviceInfo.rdp, next);
+    if (!confirmation) return;
     if (activeLink.broken) throw new Error('ST-LINK 已中斷，請重新連接');
     attempted = true;
     await selectedTarget().setRdp(activeLink, next, { expectedOptions, confirmation, update: message => {
