@@ -1,10 +1,18 @@
 // ST-LINK/V2 wire protocol cross-checked against webstlink (Devan Lai,
 // Pavel Revak) and stlink-org/stlink. See SOURCES.md for references.
-export const FILTERS = [{ vendorId: 0x0483, productId: 0x3748 }];
+const PROBES = new Map([
+  [0x3748, { name: 'ST-LINK/V2', outEndpoint: 2, inEndpoint: 1 }],
+  [0x374b, { name: 'ST-LINK/V2-1', outEndpoint: 1, inEndpoint: 1 }]
+]);
+export const FILTERS = [...PROBES.keys()].map(productId => ({ vendorId: 0x0483, productId }));
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const hex = n => `0x${n.toString(16)}`;
 export class Stlink {
-  constructor(device) { this.device = device; this.broken = false; this.claimed = false; }
+  constructor(device) {
+    this.probe = device.vendorId === 0x0483 ? PROBES.get(device.productId) : null;
+    if (!this.probe) throw new Error('此版本支援 ST-LINK/V2（0483:3748）及 V2-1（0483:374B）。');
+    this.device = device; this.broken = false; this.claimed = false;
+  }
 
   async io(promise) {
     if (this.broken) throw new Error('USB 連線已失效，請重新連接 ST-LINK。');
@@ -26,7 +34,7 @@ export class Stlink {
     const packet = new Uint8Array(16);
     packet.set(bytes);
     const send = async data => {
-      const result = await this.io(this.device.transferOut(2, data));
+      const result = await this.io(this.device.transferOut(this.probe.outEndpoint, data));
       if (result.status !== 'ok' || result.bytesWritten !== data.byteLength) {
         this.broken = true;
         throw new Error('USB 寫入失敗或資料不完整。請重新連接 ST-LINK。');
@@ -35,7 +43,7 @@ export class Stlink {
     await send(packet);
     if (payload) await send(payload);
     if (!receive) return null;
-    const result = await this.io(this.device.transferIn(1, Math.max(64, receive)));
+    const result = await this.io(this.device.transferIn(this.probe.inEndpoint, Math.max(64, receive)));
     if (result.status !== 'ok' || !result.data || result.data.byteLength < receive) {
       this.broken = true;
       throw new Error('USB 回覆失敗或資料不完整。請重新連接 ST-LINK。');
@@ -48,7 +56,6 @@ export class Stlink {
     return response;
   }
   async open() {
-    if (this.device.vendorId !== 0x0483 || this.device.productId !== 0x3748) throw new Error('此版本只支援 ST-LINK/V2（0483:3748）。');
     await this.device.open();
     if (this.device.configuration?.configurationValue !== 1) await this.device.selectConfiguration(1);
     await this.device.claimInterface(0);
@@ -57,7 +64,7 @@ export class Stlink {
     const version = (await this.command([0xf1, 0x80], 6)).getUint16(0, false);
     const hardware = version >>> 12, jtag = (version >>> 6) & 63;
     if (hardware !== 2 || jtag < 22) throw new Error(`探針 V${hardware}J${jtag} 不符合需求，請使用 ST-LINK/V2 J22 以上韌體。`);
-    this.version = `V${hardware}J${jtag}`;
+    this.version = `${this.probe.name} · V${hardware}J${jtag}`;
     const mode = (await this.command([0xf5], 2)).getUint8(0);
     if (mode === 0) await this.command([0xf3, 7]);
     else if (mode === 2) await this.command([0xf2, 0x21]);

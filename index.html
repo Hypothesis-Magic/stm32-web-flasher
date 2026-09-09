@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffffff">
-  <meta name="description" content="選擇 STM32 晶片與 Intel HEX 韌體，透過 ST-LINK/V2 在瀏覽器完成燒錄與驗證。">
+  <meta name="description" content="選擇 STM32 晶片與 Intel HEX 韌體，透過 ST-LINK 在瀏覽器完成燒錄與驗證。">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>STM32 韌體燒錄工具</title>
   <link rel="stylesheet" href="./style.css">
@@ -12,7 +12,7 @@
 </head>
 <body>
   <main>
-    <header><h1>STM32 韌體燒錄 <span>ST-LINK/V2</span></h1><p>選擇晶片與 HEX 韌體直接燒錄。檔案只在這台電腦處理。</p></header>
+    <header><h1>STM32 韌體燒錄 <span>ST-LINK/V2 · V2-1</span></h1><p>選擇晶片與 HEX 韌體直接燒錄。檔案只在這台電腦處理。</p></header>
     <aside class="notice">測試版 · 尚待實機驗證。燒錄時請讓外部負載斷電，並保持 MCU 與 ST-LINK 供電。</aside>
     <p id="compatibility" role="status">正在檢查瀏覽器…</p>
     <div class="workspace">
@@ -23,7 +23,7 @@
           <option value="stm32g031g8u6">STM32G031G8U6 · 64 KB Flash</option>
         </select>
         <p id="target-hint" class="small">目前支援 STM32G031G8U6。</p>
-        <p>ST-LINK/V2 → SWDIO、SWCLK、GND；目標板須有正確供電，原廠探針也需連接目標電壓參考。</p>
+        <p>ST-LINK → SWDIO、SWCLK、GND；目標板須有正確供電，原廠探針也需連接目標電壓參考。</p>
         <button id="connect" disabled>連接 ST-LINK</button>
         <button id="disconnect" class="secondary" disabled>中斷連線</button>
         <dl><dt>連線狀態</dt><dd id="device">尚未連線</dd><dt>探針韌體</dt><dd id="probe">—</dd></dl>
@@ -49,7 +49,7 @@
       <p>請使用桌面版 Chrome 或 Edge，並從 HTTPS 網址開啟。Safari、Firefox 不支援此頁所需的 WebUSB。</p>
       <p>macOS 通常不需要安裝驅動。請先結束 CubeProgrammer、CubeIDE 偵錯或其他正在使用 ST-LINK 的程式。</p>
       <p>Windows 11 必須讓 ST-LINK 的 USB 介面使用 WinUSB。如果顯示無法開啟或取得介面，可能需要一次性驅動設定；純網頁無法自行安裝驅動，也無法保證所有 V2 相容棒都免安裝。</p>
-      <p>此版本支援 ST-LINK/V2（0483:3748），探針需具備 API v2 與 SWD 調速功能（J22 以上）。不支援 V1、V3、J-Link、解除讀保護或修改 Option Bytes。若既有韌體關閉 SWD 或進入低功耗而無法連線，需用原廠工具的 under-reset 方式救援。</p>
+      <p>此版本支援 ST-LINK/V2（0483:3748）及 V2-1（0483:374B），探針需具備 API v2 與 SWD 調速功能（J22 以上）。不支援 V1、V3、J-Link、解除讀保護或修改 Option Bytes。若既有韌體關閉 SWD 或進入低功耗而無法連線，需用原廠工具的 under-reset 方式救援。</p>
       <p>識別碼只能確認 G03x/G04x 家族與容量，無法辨識封裝或完整料號；請確認實際晶片標示為 STM32G031G8U6。</p>
     </details>
     <footer>USB 直接連線 · 不需本機服務 · 不上傳韌體</footer>
