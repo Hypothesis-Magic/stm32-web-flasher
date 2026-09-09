@@ -31,7 +31,6 @@ button:disabled { color: #737b76; border-color: var(--line); background: var(--s
 #flash:disabled { background: #e9ecea; border-color: #e9ecea; color: #69746d; }
 :focus-visible { outline: 3px solid #92c2ad; outline-offset: 3px; }
 
-.notice { display: inline-block; margin-bottom: 24px; padding: 6px 10px; background: var(--soft); color: var(--muted); border-radius: 5px; font-size: .8125rem; }
 #compatibility { margin: 14px 0 28px; font-size: .875rem; }
 .error { color: var(--error) !important; }
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 30px; align-items: start; }
@@ -71,6 +70,18 @@ summary:hover { color: var(--text); }
 pre { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 14px; padding: 14px; border-radius: 5px; background: var(--soft); color: var(--muted); font: .875rem/1.75 ui-monospace, SFMono-Regular, Consolas, monospace; }
 .help { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 6px; }
 .help p { font-size: .875rem; line-height: 1.8; }
+.option-bytes { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
+.option-bytes h2 span { margin-left: 8px; color: var(--muted); font-weight: 400; }
+.rdp-actions { display: flex; align-items: center; gap: 12px; }
+.rdp-actions label { margin: 0; flex-shrink: 0; }
+.rdp-actions select { max-width: 310px; }
+.rdp-actions button { flex-shrink: 0; }
+.danger:enabled { color: var(--error); border-color: var(--error); }
+dialog { width: min(480px, calc(100% - 32px)); max-height: calc(100% - 32px); padding: 24px; border: 1px solid var(--line); border-radius: 10px; color: var(--text); }
+dialog::backdrop { background: rgb(20 30 25 / 35%); }
+dialog p { font-size: .9375rem; }
+.confirmation-label { margin-top: 20px; }
+#rdp-confirm-text { width: 100%; padding: 10px; border: 1px solid #d8dfda; border-radius: 6px; }
 
 @media (max-width: 740px) {
   main { padding: 22px 20px 24px; }
@@ -80,6 +91,9 @@ pre { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: a
   .action { display: block; }
   .action button { width: 100%; margin-top: 10px; }
   .execution { margin-top: 24px; }
+  .rdp-actions { flex-wrap: wrap; }
+  .rdp-actions label { width: 100%; }
+  .rdp-actions select { max-width: none; flex: 1; min-width: 180px; }
 }
 
 @media (max-width: 360px) {

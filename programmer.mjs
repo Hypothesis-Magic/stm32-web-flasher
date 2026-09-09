@@ -1,7 +1,9 @@
 import { FLASH_START, PAGE_SIZE, validateImage, mergePage, addressText } from './hex.mjs';
 import { LOADER } from './loader.mjs';
 
-export async function identify(link) {
+export const rdpLevel = options => (options & 0xff) === 0xaa ? 0 : (options & 0xff) === 0xcc ? 2 : 1;
+
+export async function identify(link, { forProgramming = false } = {}) {
   const cpu = await link.read32(0xe000ed00);
   const id = await link.read32(0x40015800);
   const size = (await link.read32(0x1fff75e0)) & 0xffff;
@@ -9,9 +11,10 @@ export async function identify(link) {
     throw new Error(`目標不符：CPU ${addressText(cpu)}、Device ID ${addressText(id & 0xfff)}、Flash ${size} KB；僅接受 G03x/G04x 家族、64 KB 的目標；請確認料號為 STM32G031G8U6`);
   }
   const options = await link.read32(0x40022020);
-  if ((options & 0xff) !== 0xaa) throw new Error('晶片已啟用讀取保護；此工具不會解鎖或改寫 Option Bytes');
-  if (!(options & 0x10000)) throw new Error('晶片設定為硬體自動啟動 IWDG；此版本不支援該設定，請使用原廠工具');
-  return { id: id & 0xfff, size, revision: id >>> 16 };
+  const rdp = rdpLevel(options);
+  if (forProgramming && rdp !== 0) throw new Error('請先將 RDP 設為 0，重新上電後再燒錄');
+  if (forProgramming && !(options & 0x10000)) throw new Error('晶片設定為硬體自動啟動 IWDG；此版本不支援該設定，請使用原廠工具');
+  return { id: id & 0xfff, size, revision: id >>> 16, options, rdp };
 }
 
 const equal = (actual, expected, start) => {
@@ -24,10 +27,10 @@ export async function program(link, image, { preserveSettings = true, update = (
   // Snapshot the input; the UI cannot change the file halfway through a write.
   image = { ...image, pages: [...image.pages], data: new Map(image.data) };
   validateImage(image, preserveSettings);
-  await identify(link);
+  await identify(link, { forProgramming: true });
   update('暫停並重置晶片', 0);
   await link.resetHalt();
-  await identify(link);
+  await identify(link, { forProgramming: true });
   // Reset gives the loader HSI16 and disables DMA/peripherals from the old app.
   if (!((await link.read32(0x40021000)) & 0x400)) throw new Error('HSI16 時鐘尚未就緒');
   const status = await link.read32(0x40022010);

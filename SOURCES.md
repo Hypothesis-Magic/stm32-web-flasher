@@ -11,6 +11,29 @@ It does not download code from a CDN or upload firmware to a server.
 - [Chrome WebUSB platform requirements](https://developer.chrome.com/docs/capabilities/build-for-webusb): macOS access to unclaimed interfaces; Windows WinUSB requirement.
 - [GitHub Pages custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
+## RDP option bytes
+
+`rdp.mjs` follows RM0444 sections 3.4.2 and 3.5.1, cross-checked against ST's
+`stm32g0xx_hal_flash_ex.c` and `stm32g031xx.h`. Only the RDP byte is changed:
+level 0 = `0xAA`, level 1 = `0xBB`, level 2 = `0xCC`.
+
+- Changes require a separate button, acknowledgement and typed confirmation
+- Level 1 to 0 erases main Flash and backup registers, including the last 4 KB;
+  the firmware programming preserve-settings checkbox does not apply
+- Level 2 is irreversible and disables the debug port, including under reset
+- Targets with PCROP, BOOT_LOCK, securable memory or hardware IWDG are rejected
+- After programming completes, the controller is locked and the probe disconnected
+- The user must completely power-cycle the target; there is no automatic
+  OBL_LAUNCH or CPU resume (see RM0444's debugger-connected RDP/POR note)
+- An OPTR read returns the last loaded value, not the just-written value;
+  programming completion is not reported as verification of the new RDP level
+- Reconnect after power cycling to read back level 0 or 1; level 2 prevents this
+- Interrupted option writes are not retried; use the ST tool to inspect the target
+
+Firmware flashing has been tested on hardware by the user. RDP register sequencing
+and safeguards have automated mock tests; RDP transitions have not yet been tested
+on hardware. A level 2 hardware test permanently locks the test device.
+
 ## webstlink license
 
 The MIT License (MIT)

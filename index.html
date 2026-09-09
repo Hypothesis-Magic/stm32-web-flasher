@@ -13,7 +13,6 @@
 <body>
   <main>
     <header><h1>STM32 韌體燒錄 <span>ST-LINK/V2 · V2-1</span></h1></header>
-    <aside class="notice">測試版 · 尚待實機驗證</aside>
     <p id="compatibility" role="status" hidden></p>
     <div class="workspace">
       <section class="card">
@@ -24,7 +23,7 @@
         </select>
         <div class="connection-actions"><button id="connect" disabled>連接 ST-LINK</button>
         <button id="disconnect" class="secondary" disabled>中斷連線</button></div>
-        <dl><dt>連線狀態</dt><dd id="device">未連線</dd><dt>晶片狀態</dt><dd id="chip-state" aria-live="polite">未知</dd><dt>探針韌體</dt><dd id="probe">—</dd></dl>
+        <dl><dt>連線狀態</dt><dd id="device">未連線</dd><dt>晶片狀態</dt><dd id="chip-state" aria-live="polite">未知</dd><dt>讀取保護</dt><dd id="rdp-current">—</dd><dt>探針韌體</dt><dd id="probe">—</dd></dl>
       </section>
       <section class="card">
         <h2><span class="step">02</span> 選擇韌體</h2>
@@ -41,13 +40,41 @@
       <p class="small">燒錄時請勿拔除 USB 或關閉分頁</p>
       <details><summary>操作紀錄</summary><pre id="log" aria-label="操作紀錄"></pre></details>
     </section>
+    <section class="card option-bytes" aria-labelledby="rdp-heading">
+      <h2 id="rdp-heading">讀取保護 <span class="small">Option Bytes · RDP</span></h2>
+      <div class="rdp-actions">
+        <label class="file-label" for="rdp-level">保護等級</label>
+        <select id="rdp-level" aria-describedby="rdp-hint">
+          <option value="0">RDP 0 · 無保護</option>
+          <option value="1">RDP 1 · 禁止外部讀取</option>
+          <option value="2">RDP 2 · 永久關閉除錯</option>
+        </select>
+        <button id="rdp-apply" disabled>套用 RDP</button>
+      </div>
+      <p id="rdp-hint" class="small">RDP 1 降回 0 會清除 Flash，包含最後 4 KB</p>
+      <p id="rdp-result" class="small" role="status" hidden></p>
+    </section>
     <details class="help"><summary>連線疑難與使用說明</summary>
       <p>使用桌面版 Chrome／Edge 與 HTTPS 網址，Safari／Firefox 不支援</p>
       <p>無法連線時，先關閉 CubeProgrammer、CubeIDE 偵錯或其他占用 ST-LINK 的程式<br>macOS 通常不需額外驅動；Windows 需使用 WinUSB</p>
-      <p>支援 ST-LINK/V2（3748）與 V2-1（374B），韌體需為 J22 以上<br>不支援 V1、V3、J-Link、解除讀保護或修改 Option Bytes</p>
+      <p>支援 ST-LINK/V2（3748）與 V2-1（374B），韌體需為 J22 以上<br>不支援 V1、V3、J-Link，Option Bytes 僅支援 RDP</p>
+      <p>RDP 變更後須將目標板完全斷電再上電，不是只重插 ST-LINK<br>RDP 2 無法解除，也無法再透過 ST-LINK 燒錄或讀取狀態</p>
+      <p>已啟用 PCROP、BOOT_LOCK、安全區域或硬體 IWDG 的晶片，請使用原廠工具設定 RDP</p>
       <p>識別碼無法確認完整料號，請核對晶片標示與選單<br>若韌體關閉 SWD，請使用原廠工具的 under-reset 功能</p>
       <p>僅擦除 HEX 涵蓋的頁面，同頁未指定的資料會保留<br>燒錄時請讓外部負載斷電，維持 MCU 與 ST-LINK 供電</p>
     </details>
   </main>
+  <dialog id="rdp-dialog" aria-labelledby="rdp-title" aria-describedby="rdp-warning">
+    <h2 id="rdp-title">確認變更 RDP</h2>
+    <p id="rdp-warning"></p>
+    <p class="small">請保持供電穩定，完成後將目標板完全斷電再上電</p>
+    <label class="check"><input id="rdp-ack" type="checkbox">我了解這次變更的影響</label>
+    <label class="file-label confirmation-label" id="rdp-confirm-label" for="rdp-confirm-text"></label>
+    <input id="rdp-confirm-text" type="text" autocomplete="off" spellcheck="false" autocapitalize="off">
+    <div class="connection-actions">
+      <button id="rdp-cancel" autofocus>取消</button>
+      <button id="rdp-confirm" disabled>確認套用</button>
+    </div>
+  </dialog>
 </body>
 </html>
