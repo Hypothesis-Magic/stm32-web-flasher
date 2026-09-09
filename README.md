@@ -28,8 +28,9 @@ are parsed and processed locally in the browser, not uploaded to a server.
 3. Open the web flasher, select the chip model, and click **Connect ST-LINK**.
 4. If the target is at RDP 1, automatic unprotection and erase take priority.
    Follow the power-cycle instructions and reconnect before programming.
-5. Choose a complete application **Intel HEX (.hex)** file, including its vector
-   table at `0x08000000`. Files are limited to 2 MB.
+5. Choose **Local file** or **Online firmware**. Select a complete application
+   **Intel HEX (.hex)** file, including its vector table at `0x08000000`.
+   Files are limited to 2 MB.
 6. Keep **Preserve last 4 KB of Flash** enabled unless your firmware intentionally
    overwrites `0x0800F000–0x0800FFFF`.
 7. Click **Flash and verify**. Keep power stable, USB connected, and the tab open.
@@ -38,6 +39,43 @@ The programmer preserves unspecified bytes in each affected 2 KB page and verifi
 the programmed data by reading it back. It restarts the target only after successful
 verification. Connecting halts the CPU; disconnecting alone does not resume firmware.
 Disconnect external loads while keeping the MCU and probe powered.
+
+## Online firmware
+
+If you have remembered an Access Key on [Downloads](https://hypothesis-magic.github.io/firmware-downloads/)
+in the same browser profile, the flasher automatically selects **Online firmware**
+and unlocks the catalog. Select a project, version, and HEX file. The file is
+downloaded as ciphertext, decrypted in memory, checked against the catalog's byte
+length and SHA-256, and passed to the same HEX parser as local files. No intermediate
+file needs to be saved to disk. Connecting ST-LINK and starting programming remain
+explicit button actions; loading the catalog or a file never accesses USB.
+
+Without a remembered key, local files continue to work. To enable online firmware,
+open Downloads, unlock and choose **Remember this Access Key**, then return here.
+Opening a Downloads `#key=` link alone does not persist a key. Use **Reload catalog**
+after changing the key or when publication/network errors occur; **Reload file**
+retries the selected download. An invalid saved key is not silently deleted.
+
+Only nonempty `.hex` files of at most 2 MB appear in this tool. A catalog entry is
+not proof of board compatibility: choose the correct project for your physical
+board. Existing vector table, address range, chip checks and last-4-KB protection
+still apply. The catalog currently carries no board revision or target-chip metadata.
+
+Both Pages sites share the `https://hypothesis-magic.github.io` origin. This tool
+reads the existing storage entry `hmf-access-key:v1:/firmware-downloads/` and fetches
+`/firmware-downloads/protected/manifest.enc` and the selected encrypted blob.
+It does not save another copy of the key or put keys in URLs, requests or logs.
+Other scripts hosted on the same origin can also read this storage; different
+paths are not security boundaries. Custom domains and different browser profiles
+do not automatically share it. Local development must serve the downloads path
+under the same origin; the automated tests provide a synthetic catalog there.
+
+Changing a selection immediately invalidates the previous input and cancels its
+download. Changing or forgetting the key in another tab clears the catalog and
+loaded online image. If programming is already in progress, its fixed image
+snapshot finishes normally; the cleared input cannot be used for another flash.
+Key rotation does not revoke already decrypted copies. RDP behavior is unchanged,
+including the automatic RDP 1 regression and erase described above.
 
 ## Language
 
@@ -97,6 +135,31 @@ Serve it over HTTPS for WebUSB; do not rely on opening `index.html` as a local f
 `app.mjs` manages the UI, `i18n.mjs` handles localization, `hex.mjs` validates Intel
 HEX, `stlink.mjs` implements the USB transport, and `programmer.mjs`, `loader.mjs`,
 and `rdp.mjs` implement device programming and protection changes.
+
+`online-firmware.mjs` manages catalog selection and cancellation; `catalog.mjs`
+loads only verified online HEX files. `vault-crypto.mjs` is vendored from
+[`firmware-downloads` at ae0e8e9](https://github.com/Hypothesis-Magic/firmware-downloads/blob/ae0e8e9a8e97245f17993d0d2062136c14267659/crypto.mjs)
+to keep deployment self-contained. Keep it compatible with the publisher's HMF v1
+format when updating either system. No vault or publication changes are required.
+
+## Development checks
+
+The site still runs without a build step or production dependencies. Node 22 and
+the development-only Playwright dependency run the regression checks:
+
+```sh
+npm ci
+npm test
+npx playwright install chromium
+npm run test:browser
+```
+
+To use an installed Chrome instead, set `PLAYWRIGHT_CHANNEL=chrome` for the browser
+test command. Browser tests use fresh profiles, ephemeral test keys, a local test
+server and simulated USB/programmer modules. They cover storage, language changes,
+catalog/file integrity failures, cancellation, local-file fallback and the explicit
+flash boundary. They never connect to real hardware. Screenshots are saved under
+`test-results/`; actual ST-LINK verification remains a hardware check.
 
 See [SOURCES.md](SOURCES.md) for technical references and third-party attribution,
 including the [ST RM0444 reference manual](https://www.st.com/resource/en/reference_manual/rm0444-stm32g0x1-advanced-armbased-32bit-mcus-stmicroelectronics.pdf).

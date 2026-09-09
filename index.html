@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="STM32 韌體燒錄與驗證工具">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>STM32 韌體燒錄工具</title>
-  <link rel="stylesheet" href="./style.css?v=bilingual">
-  <script type="module" src="./app.mjs?v=lean-rdp-copy"></script>
+  <link rel="stylesheet" href="./style.css?v=online-firmware">
+  <script type="module" src="./app.mjs?v=online-firmware"></script>
 </head>
 <body>
   <main>
@@ -27,10 +27,31 @@
       </section>
       <section class="card">
         <h2><span class="step">02</span> 選擇韌體</h2>
-        <label class="file-label" for="firmware">Intel HEX 檔案（.hex）</label>
-        <input id="firmware" type="file" accept=".hex">
+        <label class="file-label" for="firmware-source">韌體來源</label>
+        <select id="firmware-source"><option value="local">本機檔案</option><option value="online">線上韌體</option></select>
+        <div id="local-firmware" class="firmware-source-panel">
+          <label class="file-label" for="firmware">Intel HEX 檔案（.hex）</label>
+          <input id="firmware" type="file" accept=".hex">
+        </div>
+        <div id="online-firmware" class="firmware-source-panel" hidden>
+          <p id="online-status" class="small" role="status" aria-live="polite"></p>
+          <div class="catalog-actions">
+            <button id="online-refresh" type="button">重新載入清單</button>
+            <a href="/firmware-downloads/" target="_blank" rel="noopener noreferrer">開啟下載頁／管理金鑰</a>
+          </div>
+          <div id="online-choices" hidden>
+            <label class="file-label" for="online-project">專案</label>
+            <select id="online-project" disabled></select>
+            <label class="file-label" for="online-version">版本</label>
+            <select id="online-version" disabled></select>
+            <label class="file-label" for="online-file">HEX 檔案</label>
+            <select id="online-file" disabled></select>
+            <p class="small">選檔後自動解密與驗證，請確認專案符合目前的板子</p>
+            <button id="online-retry" type="button" hidden>重新載入檔案</button>
+          </div>
+        </div>
         <p id="file-status" role="status">尚未選擇檔案</p>
-        <dl><dt>資料大小</dt><dd id="file-size">—</dd><dt>位址範圍</dt><dd id="file-range">—</dd><dt>涉及頁數</dt><dd id="file-pages">—</dd></dl>
+        <dl><dt>目前檔案</dt><dd id="file-name" translate="no">—</dd><dt>資料大小</dt><dd id="file-size">—</dd><dt>位址範圍</dt><dd id="file-range">—</dd><dt>涉及頁數</dt><dd id="file-pages">—</dd></dl>
         <label class="check"><input id="preserve" type="checkbox" checked> 保護最後 4 KB Flash（0x0800F000–0x0800FFFF）</label>
       </section>
     </div>

@@ -56,6 +56,11 @@ input:disabled::file-selector-button { color: var(--muted); cursor: not-allowed;
 .check { display: flex; align-items: flex-start; gap: 8px; font-size: .875rem; color: var(--muted); }
 .check input { width: 16px; height: 16px; margin: 4px 0 0; flex-shrink: 0; accent-color: var(--accent); }
 .small { font-size: .875rem; }
+.firmware-source-panel { margin-top: 18px; }
+.catalog-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 12px 0 18px; }
+.catalog-actions a { color: var(--accent); font-size: .875rem; text-underline-offset: 3px; }
+#online-choices .file-label { margin-top: 14px; }
+#online-choices p, #online-status { overflow-wrap: anywhere; }
 
 .execution { border-top: 1px solid var(--line); margin-top: 30px; padding-top: 24px; }
 .action { display: flex; align-items: center; justify-content: space-between; gap: 20px; }

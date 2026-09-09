@@ -1,6 +1,22 @@
 // Original messages remain language-neutral inputs to the hardware/UI boundary.
 // Translate only presentation; never translate protocol checks or confirmation tokens.
 export const messages = [
+  ['韌體來源', 'Firmware source'], ['本機檔案', 'Local file'], ['線上韌體', 'Online firmware'],
+  ['重新載入清單', 'Reload catalog'], ['開啟下載頁／管理金鑰', 'Downloads / manage key'],
+  ['專案', 'Project'], ['版本', 'Version'], ['HEX 檔案', 'HEX file'], ['目前檔案', 'Selected file'],
+  ['選擇專案', 'Select a project'], ['選擇版本', 'Select a version'], ['選擇 HEX 檔案', 'Select a HEX file'],
+  ['選檔後自動解密與驗證，請確認專案符合目前的板子', 'Files are decrypted and verified on selection. Choose the project that matches your board'],
+  ['重新載入檔案', 'Reload file'], ['正在載入並驗證韌體…', 'Loading and verifying firmware…'],
+  ['無法讀取已儲存的金鑰，請允許網站儲存或使用本機檔案', 'Saved key is unavailable. Allow site storage or use a local file'],
+  ['尚未記住金鑰，請先到下載頁解鎖並記住 Access Key', 'No saved key. Open Downloads, unlock, and remember your Access Key'],
+  ['線上韌體需要 HTTPS 與支援 Web Crypto 的瀏覽器', 'Online firmware requires HTTPS and a browser with Web Crypto'],
+  ['正在解鎖韌體清單…', 'Unlocking firmware catalog…'],
+  ['已使用記住的金鑰解鎖，請選擇專案與版本', 'Unlocked with your saved key. Select a project and version'],
+  ['目前沒有可供此工具載入的 HEX 檔案', 'No HEX files are available for this tool'],
+  ['無法解鎖清單，請確認金鑰、網路連線，或到下載頁更新金鑰後重試', 'Could not unlock the catalog. Check your key and connection, or update your key in Downloads and retry'],
+  ['線上韌體下載或完整性驗證失敗，請重試或重新載入清單', 'Firmware download or integrity verification failed. Retry or reload the catalog'],
+  ['已儲存的金鑰已變更，請重新載入清單', 'Your saved key changed. Reload the catalog'],
+  ['請重新載入線上韌體清單', 'Reload the online firmware catalog'],
   ['STM32 韌體燒錄工具', 'STM32 Web Flasher'],
   ['STM32 韌體燒錄與驗證工具', 'Flash and verify STM32 firmware'],
   ['STM32 韌體燒錄', 'STM32 Web Flasher'],

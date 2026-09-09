@@ -2,7 +2,9 @@ import { parseHex, validateImage, addressText } from './hex.mjs';
 import { Stlink, FILTERS } from './stlink.mjs';
 import { identify, program } from './programmer.mjs';
 import { setRdp, rdpConfirmation } from './rdp.mjs';
-import { createI18n } from './i18n.mjs';
+import { createI18n } from './i18n.mjs?v=online-firmware';
+import { createOnlineFirmware } from './online-firmware.mjs';
+import { MAX_HEX_BYTES } from './catalog.mjs';
 
 const $ = id => document.getElementById(id);
 let languageStorage;
@@ -21,6 +23,7 @@ function selectedTarget() {
   return target;
 }
 let link = null, deviceInfo = null, image = null, busy = false, fileReading = false;
+let online, fileGeneration = 0;
 let powerCycleRequired = false;
 try { powerCycleRequired = sessionStorage.getItem('rdp-power-cycle') === 'yes'; } catch {}
 function requirePowerCycle(value) {
@@ -53,6 +56,7 @@ function ready() {
   $('flash').disabled = busy || fileReading || !link || link.broken || deviceInfo?.rdp !== 0 || !valid;
   $('rdp-level').disabled = busy;
   $('rdp-apply').disabled = busy || !link || link.broken || !deviceInfo || deviceInfo.rdp === 2 || Number($('rdp-level').value) === deviceInfo.rdp;
+  online?.setBusy();
 }
 function showImage() {
   $('file-status').classList.remove('error');
@@ -130,30 +134,41 @@ $('disconnect').addEventListener('click', async () => {
   try { await closeLink(); status('已中斷連線'); }
   finally { busy = false; ready(); }
 });
-let fileGeneration = 0;
-$('firmware').addEventListener('change', async () => {
+function clearFirmware() {
+  fileGeneration++; image = null; fileReading = false;
+  setText($('file-name'), '—'); setText($('file-status'), '尚未選擇檔案');
+  if (!busy) $('progress').value = 0;
+  showImage(); ready();
+}
+async function loadFirmware(name, bytes, readText) {
+  if (busy) return;
   const generation = ++fileGeneration;
   image = null; fileReading = true; showImage(); ready(); $('progress').value = 0;
-  const file = $('firmware').files[0];
+  setText($('file-name'), name);
+  setText($('file-status'), '正在載入並驗證韌體…');
   try {
-    if (!file) { setText($('file-status'), '尚未選擇檔案'); return; }
-    if (!/\.hex$/i.test(file.name)) throw new Error('請選擇 .hex 檔案');
-    if (file.size > 2 * 1024 * 1024) throw new Error('HEX 檔案超過 2 MB 上限');
-    const text = await file.text();
+    if (!/\.hex$/i.test(name)) throw new Error('請選擇 .hex 檔案');
+    if (bytes > MAX_HEX_BYTES) throw new Error('HEX 檔案超過 2 MB 上限');
+    const text = await readText();
     if (generation !== fileGeneration) return;
     image = selectedTarget().parseHex(text); showImage();
-    log(`已讀取 ${file.name}：${image.size} bytes，${image.pages.length} 頁`);
+    log(`已讀取 ${name}：${image.size} bytes，${image.pages.length} 頁`);
   } catch (error) {
     if (generation !== fileGeneration) return;
     setText($('file-status'), error.message); $('file-status').classList.add('error');
   } finally { if (generation === fileGeneration) { fileReading = false; ready(); } }
+}
+$('firmware').addEventListener('change', async () => {
+  if (busy || $('firmware-source').value !== 'local') return;
+  const file = $('firmware').files[0];
+  if (!file) { clearFirmware(); return; }
+  await loadFirmware(file.name, file.size, () => file.text());
 });
 $('preserve').addEventListener('change', () => { showImage(); ready(); });
 $('target').addEventListener('change', () => {
+  if (busy) return;
   // A file validated against one profile must not carry into another profile.
-  image = null; $('firmware').value = ''; $('progress').value = 0;
-  setText($('file-status'), '尚未選擇檔案');
-  showImage(); ready();
+  clearFirmware(); $('firmware').value = ''; online?.clearSelection();
 });
 function showRdpHint() {
   const next = Number($('rdp-level').value);
@@ -262,7 +277,9 @@ try {
 $('language').addEventListener('change', () => {
   if (busy) return;
   i18n.change($('language').value);
-  renderLog();
+  renderLog(); online?.render();
 });
+online = createOnlineFirmware({ document, window, i18n, isBusy: () => busy, loadFirmware, clearFirmware, ready });
 $('rdp-level').value = '0'; showRdpHint();
 ready();
+online.start();
