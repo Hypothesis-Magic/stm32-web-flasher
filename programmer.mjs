@@ -6,18 +6,18 @@ export async function identify(link) {
   const id = await link.read32(0x40015800);
   const size = (await link.read32(0x1fff75e0)) & 0xffff;
   if (((cpu >>> 4) & 0xfff) !== 0xc60 || (id & 0xfff) !== 0x466 || size !== 64) {
-    throw new Error(`目標不符：CPU ${addressText(cpu)}、Device ID ${addressText(id & 0xfff)}、Flash ${size} KB。僅接受 G03x/G04x 家族、64 KB 的目標；請確認料號為 STM32G031G8U6。`);
+    throw new Error(`目標不符：CPU ${addressText(cpu)}、Device ID ${addressText(id & 0xfff)}、Flash ${size} KB；僅接受 G03x/G04x 家族、64 KB 的目標；請確認料號為 STM32G031G8U6`);
   }
   const options = await link.read32(0x40022020);
-  if ((options & 0xff) !== 0xaa) throw new Error('晶片已啟用讀取保護；此工具不會解鎖或改寫 Option Bytes。');
-  if (!(options & 0x10000)) throw new Error('晶片設定為硬體自動啟動 IWDG；此版本不支援該設定，請使用原廠工具。');
+  if ((options & 0xff) !== 0xaa) throw new Error('晶片已啟用讀取保護；此工具不會解鎖或改寫 Option Bytes');
+  if (!(options & 0x10000)) throw new Error('晶片設定為硬體自動啟動 IWDG；此版本不支援該設定，請使用原廠工具');
   return { id: id & 0xfff, size, revision: id >>> 16 };
 }
 
 const equal = (actual, expected, start) => {
-  if (actual.length !== expected.length) throw new Error('讀回長度不符。');
+  if (actual.length !== expected.length) throw new Error('讀回長度不符');
   const index = actual.findIndex((value, i) => value !== expected[i]);
-  if (index >= 0) throw new Error(`讀回驗證失敗：${addressText(start + index)}，預期 ${expected[index].toString(16)}，實際 ${actual[index].toString(16)}。`);
+  if (index >= 0) throw new Error(`讀回驗證失敗：${addressText(start + index)}，預期 ${expected[index].toString(16)}，實際 ${actual[index].toString(16)}`);
 };
 
 export async function program(link, image, { preserveSettings = true, update = () => {} } = {}) {
@@ -29,9 +29,9 @@ export async function program(link, image, { preserveSettings = true, update = (
   await link.resetHalt();
   await identify(link);
   // Reset gives the loader HSI16 and disables DMA/peripherals from the old app.
-  if (!((await link.read32(0x40021000)) & 0x400)) throw new Error('HSI16 時鐘尚未就緒。');
+  if (!((await link.read32(0x40021000)) & 0x400)) throw new Error('HSI16 時鐘尚未就緒');
   const status = await link.read32(0x40022010);
-  if (status & 0x50000) throw new Error('Flash 正忙碌，請重新連線。');
+  if (status & 0x50000) throw new Error('Flash 正忙碌，請重新連線');
   await link.write32(0x40022010, 0xc3fb); // Clear stale EOP/error flags only.
   const pages = [];
   for (const page of image.pages) {
@@ -64,7 +64,7 @@ export async function program(link, image, { preserveSettings = true, update = (
     const reply = await link.memory(0x20000400, 16);
     const view = new DataView(reply.buffer, reply.byteOffset, 16);
     if (view.getUint32(4, true) !== 2 || view.getUint32(8, true) !== 0) {
-      throw new Error(`Flash 寫入失敗：頁面 ${page}，狀態 ${view.getUint32(4, true)}，錯誤 ${addressText(view.getUint32(8, true))}，位址 ${addressText(view.getUint32(12, true))}。`);
+      throw new Error(`Flash 寫入失敗：頁面 ${page}，狀態 ${view.getUint32(4, true)}，錯誤 ${addressText(view.getUint32(8, true))}，位址 ${addressText(view.getUint32(12, true))}`);
     }
     update(`驗證頁面 ${page}`, 10 + 75 * (index + 1) / pages.length);
     equal(await link.memory(address, PAGE_SIZE), bytes, address);
@@ -74,5 +74,5 @@ export async function program(link, image, { preserveSettings = true, update = (
   for (const entry of pages) equal(await link.memory(entry.address, PAGE_SIZE), entry.bytes, entry.address);
   update('驗證通過，正在重啟', 98);
   await link.resetRun();
-  update('燒錄與驗證完成，晶片已重啟。', 100);
+  update('燒錄與驗證完成，晶片已重啟', 100);
 }
