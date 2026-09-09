@@ -2,8 +2,14 @@ import { parseHex, validateImage, addressText } from './hex.mjs';
 import { Stlink, FILTERS } from './stlink.mjs';
 import { identify, program } from './programmer.mjs';
 import { setRdp, rdpConfirmation } from './rdp.mjs';
+import { createI18n } from './i18n.mjs';
 
 const $ = id => document.getElementById(id);
+let languageStorage;
+try { languageStorage = window.localStorage; } catch {}
+const i18n = createI18n(document, navigator, languageStorage);
+const setText = (node, message) => i18n.setText(node, message);
+const logEntries = [];
 // Each selectable chip must provide its own parser/validator and programmer.
 // Only the implemented G031 profile is exposed in this version.
 const targets = new Map([
@@ -23,15 +29,20 @@ function requirePowerCycle(value) {
 }
 const supported = window.isSecureContext && 'usb' in navigator;
 function log(message) {
-  $('log').textContent += `${new Date().toLocaleTimeString()}  ${message}\n`;
+  logEntries.push({ time: new Date(), message });
+  renderLog();
+}
+function renderLog() {
+  $('log').textContent = logEntries.map(entry => `${entry.time.toLocaleTimeString(i18n.language)}  ${i18n.text(entry.message)}\n`).join('');
   $('log').scrollTop = $('log').scrollHeight;
 }
 function status(message, error = false) {
-  $('status').textContent = message;
+  setText($('status'), message);
   $('status').classList.toggle('error', error);
   log(message);
 }
 function ready() {
+  $('language').disabled = busy;
   let valid = false;
   try { if (image) { selectedTarget().validateImage(image, $('preserve').checked); valid = true; } } catch {}
   $('target').disabled = busy || fileReading || !!link;
@@ -46,18 +57,18 @@ function ready() {
 function showImage() {
   $('file-status').classList.remove('error');
   if (!image) {
-    for (const id of ['file-size', 'file-range', 'file-pages']) $(id).textContent = '—';
+    for (const id of ['file-size', 'file-range', 'file-pages']) setText($(id), '—');
     return;
   }
-  $('file-size').textContent = `${image.size.toLocaleString()} bytes`;
-  $('file-range').textContent = `${addressText(image.start)} – ${addressText(image.end)}`;
+  setText($('file-size'), `${image.size.toLocaleString()} bytes`);
+  setText($('file-range'), `${addressText(image.start)} – ${addressText(image.end)}`);
   try {
     const target = selectedTarget();
-    $('file-pages').textContent = `${image.pages.length} / ${target.pageCount}`;
+    setText($('file-pages'), `${image.pages.length} / ${target.pageCount}`);
     target.validateImage(image, $('preserve').checked);
-    $('file-status').textContent = 'HEX 檢查通過';
+    setText($('file-status'), 'HEX 檢查通過');
   } catch (error) {
-    $('file-status').textContent = error.message;
+    setText($('file-status'), error.message);
     $('file-status').classList.add('error');
   }
 }
@@ -69,38 +80,38 @@ function describeConnectionError(error) {
 async function closeLink() {
   const old = link; link = null; deviceInfo = null;
   if (old) { try { await old.close(); } catch (e) { log(`關閉連線：${e.message}`); } }
-  $('device').textContent = '未連線'; $('chip-state').textContent = '未知'; $('probe').textContent = '—';
-  $('rdp-current').textContent = '—';
+  setText($('device'), '未連線'); setText($('chip-state'), '未知'); setText($('probe'), '—');
+  setText($('rdp-current'), '—');
 }
 if (!supported) {
   $('compatibility').hidden = false;
-  $('compatibility').textContent = '無法使用 WebUSB，請用 Chrome／Edge 開啟 HTTPS 網址';
+  setText($('compatibility'), '無法使用 WebUSB，請用 Chrome／Edge 開啟 HTTPS 網址');
   $('compatibility').classList.add('error');
 }
 $('connect').addEventListener('click', async () => {
   if (busy) return;
   if (powerCycleRequired) {
-    if (!window.confirm('上次曾寫入 RDP\n請先將目標板所有電源完全斷開再重新上電，不是只重插 ST-LINK\n\n已完成重新上電？')) return;
+    if (!window.confirm(i18n.text('上次曾寫入 RDP\n請先將目標板所有電源完全斷開再重新上電，不是只重插 ST-LINK\n\n已完成重新上電？'))) return;
     requirePowerCycle(false);
   }
   busy = true; ready();
   let candidate;
   try {
     const target = selectedTarget();
-    $('device').textContent = '等待選擇裝置';
+    setText($('device'), '等待選擇裝置');
     // Keep requestDevice directly within the user gesture.
     const device = await navigator.usb.requestDevice({ filters: FILTERS });
-    $('device').textContent = '連線中';
+    setText($('device'), '連線中');
     candidate = new Stlink(device);
     await candidate.open();
     const info = await target.identify(candidate);
     await candidate.halt();
     link = candidate;
     deviceInfo = info;
-    $('device').textContent = '已連線';
-    $('chip-state').textContent = '暫停';
-    $('probe').textContent = candidate.version;
-    $('rdp-current').textContent = `RDP ${info.rdp}`;
+    setText($('device'), '已連線');
+    setText($('chip-state'), '暫停');
+    setText($('probe'), candidate.version);
+    setText($('rdp-current'), `RDP ${info.rdp}`);
     // The requested setting defaults off; actual protection is shown separately.
     $('rdp-level').value = '0'; showRdpHint();
     $('rdp-result').hidden = true;
@@ -108,7 +119,7 @@ $('connect').addEventListener('click', async () => {
     status(info.rdp === 0 ? '晶片檢查通過' : `RDP ${info.rdp} · 無法燒錄韌體`);
   } catch (error) {
     if (candidate) { try { await candidate.close(); } catch {} }
-    $('device').textContent = '未連線'; $('chip-state').textContent = '未知';
+    setText($('device'), '未連線'); setText($('chip-state'), '未知');
     status(describeConnectionError(error), error.name !== 'NotFoundError');
   } finally { busy = false; ready(); }
   // Connecting an RDP1 target intentionally starts regression and mass erase.
@@ -125,7 +136,7 @@ $('firmware').addEventListener('change', async () => {
   image = null; fileReading = true; showImage(); ready(); $('progress').value = 0;
   const file = $('firmware').files[0];
   try {
-    if (!file) { $('file-status').textContent = '尚未選擇檔案'; return; }
+    if (!file) { setText($('file-status'), '尚未選擇檔案'); return; }
     if (!/\.hex$/i.test(file.name)) throw new Error('請選擇 .hex 檔案');
     if (file.size > 2 * 1024 * 1024) throw new Error('HEX 檔案超過 2 MB 上限');
     const text = await file.text();
@@ -134,40 +145,41 @@ $('firmware').addEventListener('change', async () => {
     log(`已讀取 ${file.name}：${image.size} bytes，${image.pages.length} 頁`);
   } catch (error) {
     if (generation !== fileGeneration) return;
-    $('file-status').textContent = error.message; $('file-status').classList.add('error');
+    setText($('file-status'), error.message); $('file-status').classList.add('error');
   } finally { if (generation === fileGeneration) { fileReading = false; ready(); } }
 });
 $('preserve').addEventListener('change', () => { showImage(); ready(); });
 $('target').addEventListener('change', () => {
   // A file validated against one profile must not carry into another profile.
   image = null; $('firmware').value = ''; $('progress').value = 0;
-  $('file-status').textContent = '尚未選擇檔案';
+  setText($('file-status'), '尚未選擇檔案');
   showImage(); ready();
 });
 function showRdpHint() {
   const next = Number($('rdp-level').value);
-  $('rdp-hint').textContent = next === 2
+  setText($('rdp-hint'), next === 2
     ? '永久關閉 SWD／除錯，無法解除或再用 ST-LINK 燒錄'
     : next === 1 ? '阻止外部讀取 Flash，日後解除保護會清除內容'
-      : 'RDP 1 降回 0 會清除 Flash，包含最後 4 KB';
+      : 'RDP 1 降回 0 會清除 Flash，包含最後 4 KB');
   $('rdp-hint').classList.toggle('error', next === 2);
   $('rdp-apply').classList.toggle('danger', next === 2);
 }
 $('rdp-level').addEventListener('change', () => { showRdpHint(); ready(); });
 function confirmRdp(current, next) {
   const phrase = rdpConfirmation(current, next), dialog = $('rdp-dialog');
-  $('rdp-title').textContent = `RDP ${current} → RDP ${next}`;
-  $('rdp-warning').textContent = next === 2
+  const displayedPhrase = i18n.text(phrase);
+  setText($('rdp-title'), `RDP ${current} → RDP ${next}`);
+  setText($('rdp-warning'), next === 2
     ? '永久鎖定晶片，無法降級或解除保護，ST-LINK 將無法再連線、燒錄或除錯，ST 原廠也無法恢復，請先確認韌體可正常運作'
     : next === 0 ? '將清除整個 Flash 與備份暫存器，包含韌體和最後 4 KB 設定，無法復原，「保護最後 4 KB」不適用於解除 RDP'
-      : '將禁止外部讀取 Flash，ST-LINK 無法直接燒錄，日後降回 RDP 0 會清除韌體與設定';
-  $('rdp-confirm-label').textContent = `請輸入「${phrase}」`;
+      : '將禁止外部讀取 Flash，ST-LINK 無法直接燒錄，日後降回 RDP 0 會清除韌體與設定');
+  setText($('rdp-confirm-label'), `請輸入「${phrase}」`);
   $('rdp-ack').checked = false; $('rdp-confirm-text').value = '';
   $('rdp-confirm').disabled = true;
-  $('rdp-confirm').textContent = next === 2 ? '永久鎖定' : next === 0 ? '清除並解除保護' : '啟用保護';
+  setText($('rdp-confirm'), next === 2 ? '永久鎖定' : next === 0 ? '清除並解除保護' : '啟用保護');
   $('rdp-confirm').classList.toggle('danger', next !== 1);
   return new Promise(resolve => {
-    const valid = () => $('rdp-ack').checked && $('rdp-confirm-text').value === phrase;
+    const valid = () => $('rdp-ack').checked && $('rdp-confirm-text').value === displayedPhrase;
     const refresh = () => { $('rdp-confirm').disabled = !valid(); };
     $('rdp-ack').onchange = refresh; $('rdp-confirm-text').oninput = refresh;
     $('rdp-cancel').onclick = () => dialog.close('cancel');
@@ -193,16 +205,16 @@ async function applyRdp(next) {
     await selectedTarget().setRdp(activeLink, next, { expectedOptions, confirmation, update: message => {
       // Persist before the first option write, including an interrupted transfer.
       if (message.startsWith('寫入 RDP')) requirePowerCycle(true);
-      $('chip-state').textContent = '設定 RDP 中'; status(message);
+      setText($('chip-state'), '設定 RDP 中'); status(message);
     } });
-    $('rdp-result').textContent = `RDP ${next} 設定已寫入，請將目標板完全斷電再上電${next === 2 ? '，生效後 ST-LINK 將無法連線' : '，再連線確認保護等級'}`;
+    setText($('rdp-result'), `RDP ${next} 設定已寫入，請將目標板完全斷電再上電${next === 2 ? '，生效後 ST-LINK 將無法連線' : '，再連線確認保護等級'}`);
     $('rdp-result').hidden = false;
     $('rdp-result').classList.remove('error');
     status('RDP 設定已寫入，等待重新上電');
   } catch (error) {
     const message = `${error.message}${activeLink.optionWriteAttempted ? '，設定結果未確認，請重新上電後使用原廠工具檢查，勿直接重試' : ''}`;
     status(message, true);
-    $('rdp-result').textContent = message; $('rdp-result').hidden = false; $('rdp-result').classList.add('error');
+    setText($('rdp-result'), message); $('rdp-result').hidden = false; $('rdp-result').classList.add('error');
   } finally {
     if (attempted || activeLink.broken) await closeLink();
     busy = false; ready();
@@ -215,7 +227,7 @@ $('flash').addEventListener('click', async () => {
   try {
     await selectedTarget().program(link, image, { preserveSettings: $('preserve').checked, update: (message, value) => {
       status(message); $('progress').value = value;
-      $('chip-state').textContent = value === 100 ? '已重啟' : '燒錄中';
+      setText($('chip-state'), value === 100 ? '已重啟' : '燒錄中');
     } });
   } catch (error) {
     if (link && !link.broken) { try { await link.halt(); } catch {} }
@@ -225,9 +237,9 @@ $('flash').addEventListener('click', async () => {
 navigator.usb?.addEventListener('disconnect', event => {
   if (link?.device === event.device) {
     link.broken = true;
-    $('device').textContent = 'USB 已拔除';
-    $('chip-state').textContent = '未知';
-    $('rdp-current').textContent = '—';
+    setText($('device'), 'USB 已拔除');
+    setText($('chip-state'), '未知');
+    setText($('rdp-current'), '—');
     if ($('rdp-dialog').open) $('rdp-dialog').close('cancel');
     if (!busy) { link = null; deviceInfo = null; status('ST-LINK 已拔除，請重新連接', true); ready(); }
   }
@@ -246,5 +258,10 @@ try {
     }
   })).catch(() => {});
 } catch { /* Optional API must never block the hardware UI. */ }
+$('language').addEventListener('change', () => {
+  if (busy) return;
+  i18n.change($('language').value);
+  renderLog();
+});
 $('rdp-level').value = '0'; showRdpHint();
 ready();

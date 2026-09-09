@@ -14,7 +14,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.6; }
 main { max-width: 940px; margin: auto; padding: 26px 28px 28px; }
-header { padding-bottom: 20px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding-bottom: 20px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+#language { width: auto; min-width: 112px; flex-shrink: 0; }
 h1 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px; margin: 0; font-size: 1.375rem; font-weight: 650; letter-spacing: -.4px; }
 h1 span { color: var(--muted); font-size: .875rem; font-weight: 400; letter-spacing: 0; }
 h2 { margin: 0 0 18px; font-size: 1rem; font-weight: 600; }
@@ -39,6 +40,7 @@ button:disabled { color: #737b76; border-color: var(--line); background: var(--s
 .card > p { font-size: .875rem; line-height: 1.75; }
 .card > h2 + p { margin-bottom: 20px; }
 dl { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 10px 8px; margin: 24px 0; font-size: .875rem; }
+html:lang(en) dl { grid-template-columns: 112px minmax(0, 1fr); }
 dt { color: var(--muted); }
 dd { margin: 0; overflow-wrap: anywhere; }
 #file-range { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
