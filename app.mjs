@@ -101,7 +101,8 @@ $('connect').addEventListener('click', async () => {
     $('chip-state').textContent = '暫停';
     $('probe').textContent = candidate.version;
     $('rdp-current').textContent = `RDP ${info.rdp}`;
-    $('rdp-level').value = String(info.rdp); showRdpHint();
+    // The requested setting defaults off; actual protection is shown separately.
+    $('rdp-level').value = '0'; showRdpHint();
     $('rdp-result').hidden = true;
     log(`晶片 ID ${addressText(info.id)} · ${info.size} KB`);
     status(info.rdp === 0 ? '晶片檢查通過' : `RDP ${info.rdp} · 無法燒錄韌體`);
@@ -238,4 +239,5 @@ try {
     }
   })).catch(() => {});
 } catch { /* Optional API must never block the hardware UI. */ }
+$('rdp-level').value = '0'; showRdpHint();
 ready();
