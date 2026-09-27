@@ -214,7 +214,7 @@ test('online firmware in a real browser, with simulated USB only', { timeout: 12
         await page.selectOption('#target','stm32c071g8u6-dfu');
         assert(await page.isHidden('.option-bytes'));
         assert(await page.isDisabled('#preserve')); assert(await page.isChecked('#preserve'));
-        assert.match(await page.textContent('#preserve-label'),/2 KB/);
+        assert.match(await page.textContent('#preserve-label'),/4 KB/);
         await page.selectOption('#firmware-source','local');
         await page.setInputFiles('#firmware',{name:'old.hex',mimeType:'text/plain',buffer:Buffer.from(hex(1))});
         await page.waitForFunction(()=>document.getElementById('file-status').classList.contains('error'));
