@@ -20,7 +20,7 @@ export function validateC071Image(image) {
     'C071 韌體不得覆寫最後 2 KB 設定區');
   const tag = new TextEncoder().encode(DFU_ENTRY_TAG);
   check([...image.data.keys()].some(a => tag.every((b, i) => image.data.get(a + i) === b)),
-    '請選擇保留 10 秒 USB 更新入口的 Yang Smoke 2 韌體');
+    '請選擇保留 10 秒 USB 更新入口的相容韌體');
   return image;
 }
 
