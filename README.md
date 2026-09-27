@@ -46,12 +46,15 @@ Disconnect external loads while keeping the MCU and probe powered.
 1. Connect the board's USB cable. Hold **Button2 for at least 10 seconds**, until
    the LED turns off, then release. The board must already have the USB entry
    firmware installed; initial installation/recovery may require ST-LINK.
-2. Close other applications using DFU. Select **Yang Smoke 2 · STM32C071G8U6 ·
-   USB ROM DFU**, click **Connect board USB (ROM DFU)**, and select the STM32 device.
+2. Close other applications using DFU. Select **STM32C071G8U6 · USB ROM DFU**, click **Connect board USB (ROM DFU)**, and select the STM32 device.
 3. Load a compatible Yang Smoke 2 application `.hex`, locally or from the encrypted
    online catalog, then click **Flash and verify**. No ST-LINK connection is needed.
 4. Keep USB/power connected until verification finishes. If automatic restart is
    unavailable, power-cycle the board after the page reports verified completion.
+
+The website shows the connected device as **STM32 ROM DFU**. This is a display
+alias only; the browser's native USB chooser and operating system still use the
+product name supplied by ST ROM, which this website cannot change.
 
 This is ST's factory ROM bootloader, not a custom or signed bootloader. The ROM
 stage has no breathing LED. The profile always preserves the last **2 KB** of
