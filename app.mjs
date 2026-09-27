@@ -19,7 +19,7 @@ const targets = new Map([
   ['stm32g031g8u6', { parseHex, validateImage, identify, program, setRdp, pageCount: 32,
     createLink: device => new Stlink(device), filters: FILTERS }],
   ['stm32c071g8u6-dfu', { parseHex, validateImage: validateC071Image, identify: identifyC071,
-    program: programC071, pageCount: 31, dfu: true, createLink: device => new RomDfu(device), filters: DFU_FILTERS }]
+    program: programC071, pageCount: 30, dfu: true, createLink: device => new RomDfu(device), filters: DFU_FILTERS }]
 ]);
 function selectedTarget() {
   const target = targets.get($('target').value);
@@ -296,7 +296,7 @@ function showTarget() {
   setText($('transport-detail-label'), dfu ? '裝置名稱' : '探針韌體');
   if (dfu) $('preserve').checked = true;
   setText($('connect'), dfu ? '連接板端 USB（ROM DFU）' : '連接 ST-LINK');
-  setText($('preserve-label'), dfu ? '保留最後 2 KB 設定區（0x0800F800–0x0800FFFF）' : '保護最後 4 KB Flash（0x0800F000–0x0800FFFF）');
+  setText($('preserve-label'), dfu ? '保留最後 4 KB 工廠身分與設定（0x0800F000–0x0800FFFF）' : '保護最後 4 KB Flash（0x0800F000–0x0800FFFF）');
 }
 $('rdp-level').value = '0'; showRdpHint(); showTarget();
 ready();

@@ -21,7 +21,7 @@ class Usb {
         interfaceName: '@Internal Flash    /0x08000000/64*02Kg' },
         { interfaceClass:0xfe,interfaceSubclass:1,interfaceProtocol:2,alternateSetting:2,
           interfaceName:'@ENGI Bytes        /0x1FFF7500/01*768 e' }] }] }];
-    this.flash = new Uint8Array(FLASH_SIZE).fill(0xa5); this.flash.fill(0x5c, 0xf800);
+    this.flash = new Uint8Array(FLASH_SIZE).fill(0xa5); this.flash.fill(0x5c, 0xf000); this.flash.fill(0x9d, 0xf800);
     this.state = 2; this.address = FLASH_START; this.size = 64;
     this.erases = []; this.writes = []; this.requests = []; this.reads = 0;
   }
@@ -51,7 +51,7 @@ class Usb {
     const a = this.address + (s.value - 2) * 1024;
     if (this.failRead) return { status:'stall', data:null };
     if (a === 0x1fff75a0) return { status:'ok', data:view([this.size,0]) };
-    if (this.corrupt && this.writes.length && a === FLASH_START + 0xf800) this.flash[0xf800] ^= 1;
+    if (this.corrupt && this.writes.length && a === FLASH_START + 0xf000) this.flash[0xf000] ^= 1;
     return { status:'ok', data:view(this.flash.slice(a - FLASH_START, a - FLASH_START + n)) };
   }
   async controlTransferOut(s, bytes) {
@@ -84,10 +84,17 @@ async function connect(device=new Usb()) { const link=new RomDfu(device); await 
 test('C071 vectors, retained DFU entry and fixed settings boundary',()=>{
   assert(validateC071Image(c071Image()));
   for (const edit of [i=>i.data.delete(FLASH_START), i=>i.data.set(FLASH_START+1,0x70),
-    i=>i.data.set(FLASH_START+4,8), i=>i.data.delete(FLASH_START+8), i=>i.data.set(FLASH_START+0xf800,1),
+    i=>i.data.set(FLASH_START+4,8), i=>i.data.delete(FLASH_START+8), i=>i.data.set(FLASH_START+0xf000,1),
     i=>i.data.set(FLASH_START-1,1)]) {
     const image=c071Image(); edit(image); assert.throws(()=>validateC071Image(image));
   }
+});
+test('legacy DFU images remain compatible only below the new factory page',()=>{
+  const image=c071Image();
+  new TextEncoder().encode('YS2-DEV-DFU-v1-C071-62K\0').forEach((b,i)=>image.data.set(FLASH_START+8+i,b));
+  assert(validateC071Image(image));
+  image.data.set(FLASH_START+0xf000,0);
+  assert.throws(()=>validateC071Image(image));
 });
 test('functional descriptors reject malformed lengths, missing upload and unsupported transfer size',()=>{
   assert.equal(dfuFunctionalDescriptor(configBytes,0).transferSize,1024);
@@ -114,7 +121,7 @@ test('wrong VID/layout/capacity, unreadable Flash and invalid image never erase'
     await assert.rejects(async()=>programC071(await connect(d),c071Image()));
     assert.equal(d.erases.length,0);
   }
-  const link=await connect(), image=c071Image();image.data.set(FLASH_START+0xf800,1);
+  const link=await connect(), image=c071Image();image.data.set(FLASH_START+0xf000,1);
   await assert.rejects(programC071(link,image));assert.equal(link.device.erases.length,0);
 });
 test('full readback detects modified settings and does not start application',async()=>{
@@ -137,7 +144,7 @@ test('timeouts close the device, poison the connection and bound poll loops',asy
 test('read/erase/write address bounds and no option-byte or mass erase path',async()=>{
   const link=await connect();
   await assert.rejects(link.memory(0x40022020,4));
-  await assert.rejects(link.writePage(FLASH_START+0xf800,new Uint8Array(2048)));
+  await assert.rejects(link.writePage(FLASH_START+0xf000,new Uint8Array(2048)));
   await assert.rejects(link.writePage(FLASH_START+1,new Uint8Array(2048)));
   await assert.rejects(link.writePage(FLASH_START,new Uint8Array(1)));
   assert.equal(link.device.erases.length,0);

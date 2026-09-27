@@ -1,8 +1,9 @@
-// STM32 ROM DfuSe (AN3156). This profile only writes C071G8 main Flash pages 0..30.
+// STM32 ROM DfuSe (AN3156). This profile only writes C071G8 main Flash pages 0..29.
 import { FLASH_START, FLASH_SIZE, PAGE_SIZE, mergePage, addressText } from './hex.mjs';
 export const DFU_FILTERS = [{ vendorId: 0x0483, productId: 0xdf11 }];
-export const C071_SETTINGS = FLASH_START + 0xf800;
-export const DFU_ENTRY_TAG = 'YS2-DEV-DFU-v1-C071-62K\0';
+export const C071_STORAGE = FLASH_START + 0xf000;
+export const DFU_ENTRY_TAG = 'YS2-DEV-DFU-v2-C071-60K\0';
+const LEGACY_DFU_ENTRY_TAG = 'YS2-DEV-DFU-v1-C071-62K\0';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const check = (ok, message = 'ROM DFU 回覆無效') => { if (!ok) throw new Error(message); };
 
@@ -15,11 +16,14 @@ export function validateC071Image(image) {
   }
   const view = new DataView(vector.buffer), sp = view.getUint32(0, true), pc = view.getUint32(4, true);
   check(sp > 0x20000000 && sp <= 0x20006000 && sp % 8 === 0, '向量表不符合 STM32C071 的 24 KB SRAM');
-  check((pc & 1) && pc >= FLASH_START && pc < C071_SETTINGS && image.data.has(pc - 1), '向量表的 Reset Handler 無效或未包含在 HEX 中');
-  for (const [a, byte] of image.data) check(Number.isInteger(a) && a >= FLASH_START && a < C071_SETTINGS && Number.isInteger(byte) && byte >= 0 && byte <= 255,
-    'C071 韌體不得覆寫最後 2 KB 設定區');
-  const tag = new TextEncoder().encode(DFU_ENTRY_TAG);
-  check([...image.data.keys()].some(a => tag.every((b, i) => image.data.get(a + i) === b)),
+  check((pc & 1) && pc >= FLASH_START && pc < C071_STORAGE && image.data.has(pc - 1), '向量表的 Reset Handler 無效或未包含在 HEX 中');
+  for (const [a, byte] of image.data) check(Number.isInteger(a) && a >= FLASH_START && a < C071_STORAGE && Number.isInteger(byte) && byte >= 0 && byte <= 255,
+    'C071 韌體不得覆寫最後 4 KB 工廠身分與設定區');
+  const starts = [...image.data.keys()];
+  check([DFU_ENTRY_TAG, LEGACY_DFU_ENTRY_TAG].some(text => {
+    const tag = new TextEncoder().encode(text);
+    return starts.some(a => tag.every((b, i) => image.data.get(a + i) === b));
+  }),
     '請選擇保留 10 秒 USB 更新入口的相容韌體');
   return image;
 }
@@ -167,7 +171,7 @@ export class RomDfu {
     await this.idle(); return bytes;
   }
   async writePage(address, bytes) {
-    check(address >= FLASH_START && address + PAGE_SIZE <= C071_SETTINGS && (address - FLASH_START) % PAGE_SIZE === 0
+    check(address >= FLASH_START && address + PAGE_SIZE <= C071_STORAGE && (address - FLASH_START) % PAGE_SIZE === 0
       && bytes instanceof Uint8Array && bytes.length === PAGE_SIZE, 'ROM DFU 寫入範圍不允許');
     await this.command(0x41, address); // Page erase only. Never issue mass erase or READ_UNPROTECT.
     await this.command(0x21, address);

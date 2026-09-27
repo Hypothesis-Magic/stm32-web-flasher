@@ -57,14 +57,14 @@ alias only; the browser's native USB chooser and operating system still use the
 product name supplied by ST ROM, which this website cannot change.
 
 This is ST's factory ROM bootloader, not a custom or signed bootloader. The ROM
-stage has no breathing LED. The profile always preserves the last **2 KB** of
-settings (`0x0800F800–0x0800FFFF`); it does not expose RDP, option bytes, mass erase,
+stage has no breathing LED. The profile always preserves the last **4 KB** of
+factory identity and settings (`0x0800F000–0x0800FFFF`); it does not expose RDP, option bytes, mass erase,
 OTP writes or read-unprotect. A protected/unreadable device is rejected without
 attempting automatic unprotection. The ST-LINK RDP behavior above does not apply.
 
 Before erasing, the programmer reads the entire 64 KB Flash into memory. It merges
 HEX bytes into affected 2 KB pages and verifies all 64 KB after programming,
-including untouched pages and settings, before requesting a restart. There is
+including untouched pages, factory identity and settings, before requesting a restart. There is
 no automatic retry and no downloaded backup file. A failed transfer requires a
 new connection; interrupted programming may require ST-LINK recovery.
 
@@ -72,7 +72,8 @@ The profile requires C071-compatible ROM memory descriptors, a 64 KB size-regist
 value, readable Flash, valid C071 vectors and the retained Yang Smoke 2 USB-entry
 marker. The ROM advertises up to `64*02Kg` even on the 64 KB G8 part, so the actual
 size register limits access. These checks are compatibility checks, not firmware
-authentication or proof of the board revision. Older HEX files without the USB
+authentication or proof of the board revision. Both legacy 62 KiB-entry and current 60 KiB-entry markers are recognized, but
+all images must stay below the factory page at `0x0800F000`. Older HEX files without the USB
 entry are intentionally rejected, preserving the ability to update again.
 
 Validated on a physical C071G8 board using macOS Chrome: direct USB programming,
