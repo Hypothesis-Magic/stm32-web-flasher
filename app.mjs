@@ -120,7 +120,7 @@ $('connect').addEventListener('click', async () => {
     deviceInfo = info;
     setText($('device'), '已連線');
     setText($('chip-state'), target.dfu ? 'USB 更新模式' : '暫停');
-    setText($('probe'), target.dfu ? 'Yang Smoke II DFU' : candidate.version);
+    setText($('probe'), target.dfu ? 'STM32 ROM DFU' : candidate.version);
     setText($('rdp-current'), target.dfu ? '—' : `RDP ${info.rdp}`);
     // The requested setting defaults off; actual protection is shown separately.
     $('rdp-level').value = '0'; showRdpHint();

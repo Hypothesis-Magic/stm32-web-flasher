@@ -52,7 +52,7 @@ Disconnect external loads while keeping the MCU and probe powered.
 4. Keep USB/power connected until verification finishes. If automatic restart is
    unavailable, power-cycle the board after the page reports verified completion.
 
-The website shows the connected device as **Yang Smoke II DFU**. This is a display
+The website shows the connected device as **STM32 ROM DFU**. This is a display
 alias only; the browser's native USB chooser and operating system still use the
 product name supplied by ST ROM, which this website cannot change.
 
