@@ -3,10 +3,30 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
-import { accessKey, storageKey, first, second, manifest, hex, encrypt, response } from '../tests/fixtures.mjs';
+import { accessKey, storageKey, first, second, manifest, hex, encrypt, response, file } from '../tests/fixtures.mjs';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = new URL('../', import.meta.url);
+function c071Hex() {
+  const record = (address, kind, payload) => {
+    const b = [payload.length, address >> 8, address & 255, kind, ...payload];
+    b.push(-b.reduce((a, v) => a + v, 0) & 255);
+    return ':' + Buffer.from(b).toString('hex');
+  };
+  return [record(0, 4, [8,0]), record(0, 0, [0,96,0,32,9,0,0,8,
+    ...new TextEncoder().encode('YS2-DEV-DFU-v1-C071-62K\0')]), record(0,1,[])].join('\n');
+}
+const mockDfu = `export { DFU_FILTERS, validateC071Image } from './dfu.mjs?implementation';
+export class RomDfu {
+  constructor(device) { this.device=device; this.version='ROM DFU'; }
+  async open() {} async close() {}
+}
+export async function identifyC071() { return {size:64, canProgram:true, rdp:null}; }
+export async function programC071(link,image,{update}) {
+  window.dfuProgrammed=true;
+  update('燒錄與驗證完成，已送出重啟請求',100);
+}`;
+
 const mockStlink = `export const FILTERS = []; export class Stlink {
   constructor(device) { this.device = device; this.version = 'TEST'; }
   async open() {} async halt() {} async close() {}
@@ -45,7 +65,7 @@ test('online firmware in a real browser, with simulated USB only', { timeout: 12
       await context.addInitScript(({ blockedStorage }) => {
         window.usbRequests = 0;
         Object.defineProperty(navigator, 'usb', { value: {
-          requestDevice: async () => { window.usbRequests++; return {}; }, addEventListener() {}
+          requestDevice: async options => { window.usbRequests++; window.usbFilters=options.filters; return {}; }, addEventListener() {}
         } });
         if (blockedStorage) Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('Blocked', 'SecurityError'); } });
       }, { blockedStorage });
@@ -58,6 +78,7 @@ test('online firmware in a real browser, with simulated USB only', { timeout: 12
       page.setDefaultTimeout(5000);
       page.on('pageerror', error => errors.push(error.message));
       page.on('request', request => { if (request.url().includes('/protected/')) requests.push(request); });
+      await page.route('**/dfu.mjs', route => route.fulfill({ contentType: 'text/javascript', body: mockDfu }));
       await page.route('**/stlink.mjs', route => route.fulfill({ contentType: 'text/javascript', body: mockStlink }));
       await page.route('**/programmer.mjs', route => route.fulfill({ contentType: 'text/javascript', body: mockProgrammer }));
       await page.route('**/protected/manifest.enc', route => route.fulfill({ contentType: 'application/octet-stream', body: encrypt('manifest', Buffer.from(JSON.stringify(catalog))) }));
@@ -180,6 +201,48 @@ test('online firmware in a real browser, with simulated USB only', { timeout: 12
         await page.selectOption('#firmware-source', 'online');
         assert.equal(await page.textContent('#file-name'), '—');
         assert(await page.isDisabled('#flash'));
+      } finally { await context.close(); }
+    });
+
+    await t.test('C071 ROM DFU profile, local/online HEX, preserved settings and explicit programming', async () => {
+      const content=c071Hex(), firmware=file('e','Yang_Smoke_2_rc1.3.0.hex',content);
+      const catalog={version:1,projects:[{id:'yang-smoke-new',name:{en:'Yang Smoke 2','zh-TW':'Yang Smoke 2'},
+        releases:[{version:'1.3.0',files:[firmware]}]}]};
+      const {context,page,errors}=await open({catalog});
+      try {
+        await page.route('**/'+firmware.id+'.enc', route=>route.fulfill({contentType:'application/octet-stream',body:encrypt('blob/'+firmware.id,Buffer.from(content))}));
+        await page.selectOption('#target','stm32c071g8u6-dfu');
+        assert(await page.isHidden('.option-bytes'));
+        assert(await page.isDisabled('#preserve')); assert(await page.isChecked('#preserve'));
+        assert.match(await page.textContent('#preserve-label'),/2 KB/);
+        await page.selectOption('#firmware-source','local');
+        await page.setInputFiles('#firmware',{name:'old.hex',mimeType:'text/plain',buffer:Buffer.from(hex(1))});
+        await page.waitForFunction(()=>document.getElementById('file-status').classList.contains('error'));
+        assert(await page.isDisabled('#flash'));
+        await page.setInputFiles('#firmware',{name:'new.hex',mimeType:'text/plain',buffer:Buffer.from(content)});
+        await loaded(page); assert.equal(await page.evaluate(()=>window.usbRequests),0);
+        await page.selectOption('#firmware-source','online');
+        await page.waitForSelector('#online-choices',{state:'visible'});
+        await page.selectOption('#online-project','yang-smoke-new');
+        await page.selectOption('#online-version','1.3.0'); await page.selectOption('#online-file',firmware.id);
+        await loaded(page); assert(await page.isDisabled('#flash'));
+        await page.selectOption('#language','zh-Hant');
+        assert.match(await page.textContent('#connect'),/ROM DFU/);
+        await page.click('#connect');
+        assert.deepEqual(await page.evaluate(()=>window.usbFilters),[{vendorId:0x0483,productId:0xdf11}]);
+        assert(await page.isEnabled('#flash')); assert.equal(await page.evaluate(()=>window.dfuProgrammed),undefined);
+        await page.setViewportSize({width:390,height:844});
+        assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+        await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+        await page.screenshot({path:new URL('test-results/dfu-mobile.png',root).pathname,fullPage:true});
+        await page.setViewportSize({width:1200,height:900});
+        await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+        await page.screenshot({path:new URL('test-results/dfu-desktop.png',root).pathname,fullPage:true});
+        await page.click('#flash'); await page.waitForFunction(()=>window.dfuProgrammed===true);
+        await page.waitForFunction(()=>document.getElementById('status').textContent.includes('已送出重啟請求'));
+        await page.selectOption('#target','stm32g031g8u6');
+        assert(await page.isVisible('.option-bytes')); assert(await page.isEnabled('#preserve'));
+        assert.equal(await page.textContent('#file-name'),'—'); assert.deepEqual(errors,[]);
       } finally { await context.close(); }
     });
 

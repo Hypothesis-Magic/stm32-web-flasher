@@ -11,6 +11,25 @@ It does not download code from a CDN or upload firmware to a server.
 - [Chrome WebUSB platform requirements](https://developer.chrome.com/docs/capabilities/build-for-webusb): macOS access to unclaimed interfaces; Windows WinUSB requirement.
 - [GitHub Pages custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
+## STM32C071 ROM DFU
+
+- [ST AN3156, USB DFU protocol in STM32 bootloader](https://www.st.com/resource/en/application_note/an3156-how-to-use-usb-dfu-protocol-in-bootloader-on-stm32-mcus-stmicroelectronics.pdf): DfuSe address-pointer/page-erase commands, DNLOAD block 2+, polling, ABORT, and zero-length DNLOAD leave.
+- [ST AN2606, system-memory boot mode](https://www.st.com/resource/en/application_note/an2606-stm32microcontroller-system-memory-boot-mode-stmicroelectronics.pdf): STM32C071 ROM bootloader and USB interface.
+- [ST CMSIS C071 device header](https://github.com/STMicroelectronics/cmsis-device-c0/blob/main/Include/stm32c071xx.h): Flash-size register `0x1FFF75A0`.
+
+Actual C071G8 ROM descriptors were read on 2026-09-27: `0483:DF11`, DfuSe 1.1a,
+1024-byte transfer size, main Flash `@Internal Flash /0x08000000/64*02Kg`, with
+`@ENGI Bytes /0x1FFF7500/01*768 e` as the companion descriptor. The size register
+returns 64 KB, overriding the family-maximum Flash descriptor. Chrome did not
+reliably expose per-alternate memory names through `interfaceName`, so the
+implementation reads the raw configuration and string descriptors.
+
+Programming was tested on macOS Chrome with a physical C071G8 engineering board.
+All 64 KB were compared before restart, including the last 2 KB settings page;
+343 subsequent application protocol exchanges succeeded. Automated mock tests
+cover malformed descriptors, incompatible images, inaccessible Flash, interruption,
+timeouts, readback mismatch, bounded page writes and uncertain restart results.
+
 ## RDP option bytes
 
 `rdp.mjs` follows RM0444 sections 3.4.2 and 3.5.1, cross-checked against ST's
