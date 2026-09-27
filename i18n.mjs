@@ -2,9 +2,9 @@
 // Translate only presentation; never translate protocol checks or confirmation tokens.
 export const messages = [
   ['ROM DFU 使用板端 USB，請關閉其他占用 DFU 的程式；Windows 可能需要 WinUSB 驅動', 'ROM DFU uses board USB. Close other DFU applications; Windows may require a WinUSB driver'],
-  ['只接受保留 USB 更新入口的 Yang Smoke 2 HEX；固定保留最後 2 KB 設定，完成全區讀回驗證後才要求重啟', 'Only Yang Smoke 2 HEX files retaining USB update entry are accepted. The last 2 KB settings are preserved; restart is requested after full Flash verification'],
+  ['只接受保留 USB 更新入口的相容 HEX；固定保留最後 2 KB 設定，完成全區讀回驗證後才要求重啟', 'Only compatible HEX files retaining USB update entry are accepted. The last 2 KB settings are preserved; restart is requested after full Flash verification'],
   ['ROM DFU 期間 LED 熄滅；若已驗證完成但未自動重啟，請將板子重新上電', 'The LED is off in ROM DFU. If verification succeeds but automatic restart does not, power-cycle the board'],
-  ['更新介面', 'Update interface'],
+  ['裝置名稱', 'Device name'],
   ['連接板端 USB（ROM DFU）', 'Connect board USB (ROM DFU)'],
   ['接上板端 USB，長按 Button2 滿 10 秒至 LED 熄滅後放開，再連接；不需要 ST-LINK', 'Connect board USB, hold Button2 for 10 seconds until the LED turns off, then release and connect; no ST-LINK needed'],
   ['保留最後 2 KB 設定區（0x0800F800–0x0800FFFF）', 'Preserve the last 2 KB settings (0x0800F800–0x0800FFFF)'],
@@ -12,7 +12,7 @@ export const messages = [
   ['ROM DFU 回覆無效', 'Invalid ROM DFU response'],
   ['向量表不符合 STM32C071 的 24 KB SRAM', 'Vector table does not match STM32C071 24 KB SRAM'],
   ['C071 韌體不得覆寫最後 2 KB 設定區', 'C071 firmware must not overwrite the last 2 KB settings'],
-  ['請選擇保留 10 秒 USB 更新入口的 Yang Smoke 2 韌體', 'Select Yang Smoke 2 firmware that retains the 10-second USB update entry'],
+  ['請選擇保留 10 秒 USB 更新入口的相容韌體', 'Select compatible firmware that retains the 10-second USB update entry'],
   ['不支援這個 ROM DFU 描述或傳輸大小', 'Unsupported ROM DFU descriptor or transfer size'],
   ['USB DFU 已中斷，請重新連接', 'USB DFU disconnected; reconnect the device'],
   ['ROM DFU 傳輸逾時，請重新連接', 'ROM DFU transfer timed out; reconnect the device'],

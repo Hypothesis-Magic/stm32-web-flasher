@@ -120,7 +120,7 @@ $('connect').addEventListener('click', async () => {
     deviceInfo = info;
     setText($('device'), '已連線');
     setText($('chip-state'), target.dfu ? 'USB 更新模式' : '暫停');
-    setText($('probe'), candidate.version);
+    setText($('probe'), target.dfu ? 'Yang Smoke II DFU' : candidate.version);
     setText($('rdp-current'), target.dfu ? '—' : `RDP ${info.rdp}`);
     // The requested setting defaults off; actual protection is shown separately.
     $('rdp-level').value = '0'; showRdpHint();
@@ -293,7 +293,7 @@ function showTarget() {
   $('dfu-help').hidden = !dfu;
   $('stlink-help').hidden = dfu; $('dfu-details').hidden = !dfu;
   $('rdp-current-label').hidden = dfu; $('rdp-current').hidden = dfu;
-  setText($('transport-detail-label'), dfu ? '更新介面' : '探針韌體');
+  setText($('transport-detail-label'), dfu ? '裝置名稱' : '探針韌體');
   if (dfu) $('preserve').checked = true;
   setText($('connect'), dfu ? '連接板端 USB（ROM DFU）' : '連接 ST-LINK');
   setText($('preserve-label'), dfu ? '保留最後 2 KB 設定區（0x0800F800–0x0800FFFF）' : '保護最後 4 KB Flash（0x0800F000–0x0800FFFF）');

@@ -20,7 +20,7 @@
         <label class="file-label" for="target">晶片型號</label>
         <select id="target">
           <option value="stm32g031g8u6">STM32G031G8U6 · ST-LINK · 64 KB Flash</option>
-          <option value="stm32c071g8u6-dfu">Yang Smoke 2 · STM32C071G8U6 · USB ROM DFU</option>
+          <option value="stm32c071g8u6-dfu">STM32C071G8U6 · USB ROM DFU</option>
         </select>
         <p id="dfu-help" class="small" hidden>接上板端 USB，長按 Button2 滿 10 秒至 LED 熄滅後放開，再連接；不需要 ST-LINK</p>
         <div class="connection-actions"><button id="connect" disabled>連接 ST-LINK</button>
@@ -89,7 +89,7 @@
       </div>
       <div id="dfu-details" hidden>
         <p>ROM DFU 使用板端 USB，請關閉其他占用 DFU 的程式；Windows 可能需要 WinUSB 驅動</p>
-        <p>只接受保留 USB 更新入口的 Yang Smoke 2 HEX；固定保留最後 2 KB 設定，完成全區讀回驗證後才要求重啟</p>
+        <p>只接受保留 USB 更新入口的相容 HEX；固定保留最後 2 KB 設定，完成全區讀回驗證後才要求重啟</p>
         <p>ROM DFU 期間 LED 熄滅；若已驗證完成但未自動重啟，請將板子重新上電</p>
       </div>
     </details>
