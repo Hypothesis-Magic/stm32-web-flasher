@@ -2,9 +2,10 @@ import { parseHex, validateImage, addressText } from './hex.mjs';
 import { Stlink, FILTERS } from './stlink.mjs';
 import { identify, program } from './programmer.mjs';
 import { setRdp, rdpConfirmation } from './rdp.mjs';
-import { createI18n } from './i18n.mjs?v=online-firmware';
+import { createI18n } from './i18n.mjs?v=rom-dfu';
 import { createOnlineFirmware } from './online-firmware.mjs';
 import { MAX_HEX_BYTES } from './catalog.mjs';
+import { RomDfu, DFU_FILTERS, validateC071Image, identifyC071, programC071 } from './dfu.mjs';
 
 const $ = id => document.getElementById(id);
 let languageStorage;
@@ -13,9 +14,12 @@ const i18n = createI18n(document, navigator, languageStorage);
 const setText = (node, message) => i18n.setText(node, message);
 const logEntries = [];
 // Each selectable chip must provide its own parser/validator and programmer.
-// Only the implemented G031 profile is exposed in this version.
+// Transport and programming capabilities belong to the selected chip profile.
 const targets = new Map([
-  ['stm32g031g8u6', { parseHex, validateImage, identify, program, setRdp, pageCount: 32 }]
+  ['stm32g031g8u6', { parseHex, validateImage, identify, program, setRdp, pageCount: 32,
+    createLink: device => new Stlink(device), filters: FILTERS }],
+  ['stm32c071g8u6-dfu', { parseHex, validateImage: validateC071Image, identify: identifyC071,
+    program: programC071, pageCount: 31, dfu: true, createLink: device => new RomDfu(device), filters: DFU_FILTERS }]
 ]);
 function selectedTarget() {
   const target = targets.get($('target').value);
@@ -46,16 +50,17 @@ function status(message, error = false) {
 }
 function ready() {
   $('language').disabled = busy;
+  const target = targets.get($('target').value);
   let valid = false;
   try { if (image) { selectedTarget().validateImage(image, $('preserve').checked); valid = true; } } catch {}
   $('target').disabled = busy || fileReading || !!link;
   $('connect').disabled = !supported || busy || !!link || !targets.has($('target').value);
   $('disconnect').disabled = busy || !link;
   $('firmware').disabled = busy;
-  $('preserve').disabled = busy || fileReading;
-  $('flash').disabled = busy || fileReading || !link || link.broken || deviceInfo?.rdp !== 0 || !valid;
-  $('rdp-level').disabled = busy;
-  $('rdp-apply').disabled = busy || !link || link.broken || !deviceInfo || deviceInfo.rdp === 2 || Number($('rdp-level').value) === deviceInfo.rdp;
+  $('preserve').disabled = busy || fileReading || !!target?.dfu;
+  $('flash').disabled = busy || fileReading || !link || link.broken || !(deviceInfo?.rdp === 0 || deviceInfo?.canProgram) || !valid;
+  $('rdp-level').disabled = busy || !!target?.dfu;
+  $('rdp-apply').disabled = !target?.setRdp || busy || !link || link.broken || !deviceInfo || deviceInfo.rdp === 2 || Number($('rdp-level').value) === deviceInfo.rdp;
   online?.setBusy();
 }
 function showImage() {
@@ -78,6 +83,7 @@ function showImage() {
 }
 function describeConnectionError(error) {
   if (error.name === 'NotFoundError') return '已取消選擇裝置';
+  if (selectedTarget().dfu && ['NetworkError', 'SecurityError', 'NotAllowedError'].includes(error.name)) return `${error.message} 請關閉其他使用 DFU 的程式；Windows 請確認 ROM DFU 使用 WinUSB 驅動`;
   if (['NetworkError', 'SecurityError', 'NotAllowedError'].includes(error.name)) return `${error.message} 請關閉其他使用 ST-LINK 的程式；Windows 請確認 ST-LINK 使用 WinUSB 驅動`;
   return error.message;
 }
@@ -94,7 +100,7 @@ if (!supported) {
 }
 $('connect').addEventListener('click', async () => {
   if (busy) return;
-  if (powerCycleRequired) {
+  if (powerCycleRequired && !selectedTarget().dfu) {
     if (!window.confirm(i18n.text('上次曾寫入 RDP\n請先將目標板所有電源完全斷開再重新上電，不是只重插 ST-LINK\n\n已完成重新上電？'))) return;
     requirePowerCycle(false);
   }
@@ -104,23 +110,23 @@ $('connect').addEventListener('click', async () => {
     const target = selectedTarget();
     setText($('device'), '等待選擇裝置');
     // Keep requestDevice directly within the user gesture.
-    const device = await navigator.usb.requestDevice({ filters: FILTERS });
+    const device = await navigator.usb.requestDevice({ filters: target.filters });
     setText($('device'), '連線中');
-    candidate = new Stlink(device);
+    candidate = target.createLink(device);
     await candidate.open();
     const info = await target.identify(candidate);
-    await candidate.halt();
+    if (candidate.halt) await candidate.halt();
     link = candidate;
     deviceInfo = info;
     setText($('device'), '已連線');
-    setText($('chip-state'), '暫停');
+    setText($('chip-state'), target.dfu ? 'USB 更新模式' : '暫停');
     setText($('probe'), candidate.version);
-    setText($('rdp-current'), `RDP ${info.rdp}`);
+    setText($('rdp-current'), target.dfu ? '—' : `RDP ${info.rdp}`);
     // The requested setting defaults off; actual protection is shown separately.
     $('rdp-level').value = '0'; showRdpHint();
     $('rdp-result').hidden = true;
-    log(`晶片 ID ${addressText(info.id)} · ${info.size} KB`);
-    status(info.rdp === 0 ? '晶片檢查通過' : `RDP ${info.rdp} · 無法燒錄韌體`);
+    log(target.dfu ? `C071 ROM DFU · ${info.size} KB` : `晶片 ID ${addressText(info.id)} · ${info.size} KB`);
+    status((info.rdp === 0 || info.canProgram) ? '晶片檢查通過' : `RDP ${info.rdp} · 無法燒錄韌體`);
   } catch (error) {
     if (candidate) { try { await candidate.close(); } catch {} }
     setText($('device'), '未連線'); setText($('chip-state'), '未知');
@@ -168,7 +174,7 @@ $('preserve').addEventListener('change', () => { showImage(); ready(); });
 $('target').addEventListener('change', () => {
   if (busy) return;
   // A file validated against one profile must not carry into another profile.
-  clearFirmware(); $('firmware').value = ''; online?.clearSelection();
+  clearFirmware(); $('firmware').value = ''; online?.clearSelection(); showTarget(); ready();
 });
 function showRdpHint() {
   const next = Number($('rdp-level').value);
@@ -205,6 +211,7 @@ function confirmRdp(current, next) {
   });
 }
 async function applyRdp(next) {
+  if (!selectedTarget().setRdp) return;
   if (busy || !link || link.broken || !deviceInfo) return;
   const activeLink = link, expectedOptions = deviceInfo.options;
   busy = true; ready();
@@ -243,10 +250,10 @@ $('flash').addEventListener('click', async () => {
   try {
     await selectedTarget().program(link, image, { preserveSettings: $('preserve').checked, update: (message, value) => {
       status(message); $('progress').value = value;
-      setText($('chip-state'), value === 100 ? '已重啟' : '燒錄中');
+      setText($('chip-state'), value === 100 ? (selectedTarget().dfu ? '驗證完成' : '已重啟') : '燒錄中');
     } });
   } catch (error) {
-    if (link && !link.broken) { try { await link.halt(); } catch {} }
+    if (link?.halt && !link.broken) { try { await link.halt(); } catch {} }
     status(`${error.message} 燒錄未完成，請重新連接後再試；請勿依賴目前韌體內容`, true);
   } finally { await closeLink(); busy = false; ready(); }
 });
@@ -257,7 +264,7 @@ navigator.usb?.addEventListener('disconnect', event => {
     setText($('chip-state'), '未知');
     setText($('rdp-current'), '—');
     if ($('rdp-dialog').open) $('rdp-dialog').close('cancel');
-    if (!busy) { link = null; deviceInfo = null; status('ST-LINK 已拔除，請重新連接', true); ready(); }
+    if (!busy) { link = null; deviceInfo = null; status(selectedTarget().dfu ? 'USB DFU 已中斷，請重新連接' : 'ST-LINK 已拔除，請重新連接', true); ready(); }
   }
 });
 window.addEventListener('beforeunload', event => { if (busy) { event.preventDefault(); event.returnValue = ''; } });
@@ -280,6 +287,17 @@ $('language').addEventListener('change', () => {
   renderLog(); online?.render();
 });
 online = createOnlineFirmware({ document, window, i18n, isBusy: () => busy, loadFirmware, clearFirmware, ready });
-$('rdp-level').value = '0'; showRdpHint();
+function showTarget() {
+  const dfu = !!selectedTarget().dfu;
+  document.querySelector('.option-bytes').hidden = dfu;
+  $('dfu-help').hidden = !dfu;
+  $('stlink-help').hidden = dfu; $('dfu-details').hidden = !dfu;
+  $('rdp-current-label').hidden = dfu; $('rdp-current').hidden = dfu;
+  setText($('transport-detail-label'), dfu ? '更新介面' : '探針韌體');
+  if (dfu) $('preserve').checked = true;
+  setText($('connect'), dfu ? '連接板端 USB（ROM DFU）' : '連接 ST-LINK');
+  setText($('preserve-label'), dfu ? '保留最後 2 KB 設定區（0x0800F800–0x0800FFFF）' : '保護最後 4 KB Flash（0x0800F000–0x0800FFFF）');
+}
+$('rdp-level').value = '0'; showRdpHint(); showTarget();
 ready();
 online.start();

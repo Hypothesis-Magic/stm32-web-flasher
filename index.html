@@ -7,23 +7,25 @@
   <meta name="description" content="STM32 韌體燒錄與驗證工具">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>STM32 韌體燒錄工具</title>
-  <link rel="stylesheet" href="./style.css?v=online-firmware">
-  <script type="module" src="./app.mjs?v=online-firmware"></script>
+  <link rel="stylesheet" href="./style.css?v=rom-dfu">
+  <script type="module" src="./app.mjs?v=rom-dfu"></script>
 </head>
 <body>
   <main>
-    <header><h1>STM32 韌體燒錄 <span>ST-LINK/V2 · V2-1</span></h1><select id="language" aria-label="Language / 語言" translate="no"><option value="zh-Hant">繁體中文</option><option value="en">English</option></select></header>
+    <header><h1>STM32 韌體燒錄 <span>ST-LINK · USB DFU</span></h1><select id="language" aria-label="Language / 語言" translate="no"><option value="zh-Hant">繁體中文</option><option value="en">English</option></select></header>
     <p id="compatibility" role="status" hidden></p>
     <div class="workspace">
       <section class="card">
         <h2><span class="step">01</span> 連接晶片</h2>
         <label class="file-label" for="target">晶片型號</label>
         <select id="target">
-          <option value="stm32g031g8u6">STM32G031G8U6 · 64 KB Flash</option>
+          <option value="stm32g031g8u6">STM32G031G8U6 · ST-LINK · 64 KB Flash</option>
+          <option value="stm32c071g8u6-dfu">Yang Smoke 2 · STM32C071G8U6 · USB ROM DFU</option>
         </select>
+        <p id="dfu-help" class="small" hidden>接上板端 USB，長按 Button2 滿 10 秒至 LED 熄滅後放開，再連接；不需要 ST-LINK</p>
         <div class="connection-actions"><button id="connect" disabled>連接 ST-LINK</button>
         <button id="disconnect" class="secondary" disabled>中斷連線</button></div>
-        <dl><dt>連線狀態</dt><dd id="device">未連線</dd><dt>晶片狀態</dt><dd id="chip-state" aria-live="polite">未知</dd><dt>讀取保護</dt><dd id="rdp-current">—</dd><dt>探針韌體</dt><dd id="probe">—</dd></dl>
+        <dl><dt>連線狀態</dt><dd id="device">未連線</dd><dt>晶片狀態</dt><dd id="chip-state" aria-live="polite">未知</dd><dt id="rdp-current-label">讀取保護</dt><dd id="rdp-current">—</dd><dt id="transport-detail-label">探針韌體</dt><dd id="probe">—</dd></dl>
       </section>
       <section class="card">
         <h2><span class="step">02</span> 選擇韌體</h2>
@@ -52,7 +54,7 @@
         </div>
         <p id="file-status" role="status">尚未選擇檔案</p>
         <dl><dt>目前檔案</dt><dd id="file-name" translate="no">—</dd><dt>資料大小</dt><dd id="file-size">—</dd><dt>位址範圍</dt><dd id="file-range">—</dd><dt>涉及頁數</dt><dd id="file-pages">—</dd></dl>
-        <label class="check"><input id="preserve" type="checkbox" checked> 保護最後 4 KB Flash（0x0800F000–0x0800FFFF）</label>
+        <label class="check"><input id="preserve" type="checkbox" checked> <span id="preserve-label">保護最後 4 KB Flash（0x0800F000–0x0800FFFF）</span></label>
       </section>
     </div>
     <section class="card execution">
@@ -77,12 +79,19 @@
     </section>
     <details class="help"><summary>連線疑難與使用說明</summary>
       <p>使用桌面版 Chrome／Edge 與 HTTPS 網址，Safari／Firefox 不支援</p>
+      <div id="stlink-help">
       <p>無法連線時，先關閉 CubeProgrammer、CubeIDE 偵錯或其他占用 ST-LINK 的程式<br>macOS 通常不需額外驅動；Windows 需使用 WinUSB</p>
       <p>支援 ST-LINK/V2（3748）與 V2-1（374B），韌體需為 J22 以上<br>不支援 V1、V3、J-Link，Option Bytes 僅支援 RDP</p>
       <p>RDP 變更後須將目標板完全斷電再上電，不是只重插 ST-LINK<br>RDP 2 無法解除，也無法再透過 ST-LINK 燒錄或讀取狀態</p>
       <p>已啟用 PCROP、BOOT_LOCK、安全區域或硬體 IWDG 的晶片，請使用原廠工具設定 RDP</p>
       <p>識別碼無法確認完整料號，請核對晶片標示與選單<br>若韌體關閉 SWD，請使用原廠工具的 under-reset 功能</p>
       <p>僅擦除 HEX 涵蓋的頁面，同頁未指定的資料會保留<br>燒錄時請讓外部負載斷電，維持 MCU 與 ST-LINK 供電</p>
+      </div>
+      <div id="dfu-details" hidden>
+        <p>ROM DFU 使用板端 USB，請關閉其他占用 DFU 的程式；Windows 可能需要 WinUSB 驅動</p>
+        <p>只接受保留 USB 更新入口的 Yang Smoke 2 HEX；固定保留最後 2 KB 設定，完成全區讀回驗證後才要求重啟</p>
+        <p>ROM DFU 期間 LED 熄滅；若已驗證完成但未自動重啟，請將板子重新上電</p>
+      </div>
     </details>
   </main>
   <dialog id="rdp-dialog" aria-labelledby="rdp-title" aria-describedby="rdp-warning">
